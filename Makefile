@@ -36,14 +36,18 @@ INCLUDES = -I$(VDRINC) -I$(DVBDIR)
 
 DEFINES = -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
+ifdef LCDKEYCONF
+DEFINES += -DLCD_EXT_KEY_CONF="\"$(LCDKEYCONF)\""
+endif
+
 ### The object files (add further files here):
 
 OBJS = $(PLUGIN).o lcd.o sockets.o i18n.o setup.o
 
 ### The C++ compiler and options:
 
-CXX      = g++
-CXXFLAGS = -g -O2 -Wall -Woverloaded-virtual
+CXX      ?= g++
+CXXFLAGS ?= -g -O2 -Wall -Woverloaded-virtual
 
 ### Implicit rules:
 

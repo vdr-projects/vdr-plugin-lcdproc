@@ -33,6 +33,9 @@ correctly, you can fix that by selecting a in the setup menu: (Charmap)
 2 ... CFontz        Thanks to Stephan Schreiber <stephan@sschreiber.de>
 
 lcdkeyconf.h is used to configure the plugin for a keypad.
+you can use a different file instead with
+LCDKEYCONF=/path/to/your/lcdkeyconf.h 
+during compile time.
 
 Mattia Rossi <mattia@technologist.com> added support for the output pins 
 that some Matrix Orbital displays have (lcdm001 and glk driver). 

@@ -10,8 +10,13 @@
 #include "setup.h"
 #include "lcd.h"
 #include "sockets.h"
-#include "lcdkeyconf.h"
 #include "i18n.h"
+
+#ifdef LCD_EXT_KEY_CONF 
+#include LCD_EXT_KEY_CONF 
+#else 
+#include "lcdkeyconf.h"
+#endif
 
 // character mapping for output, see cLcd::Write
 #include "lcdtranstbl.h"  
@@ -158,28 +163,44 @@ void cLcd::SetHelp( unsigned int n, const char *Red, const char *Green, const ch
   if (!connected) return;
 
   char help[2*wid], red[wid+1], green[wid+1], yellow[wid+1], blue[wid+1];
-  unsigned int allchars=0, i, empty=0, spacewid=1;
+  unsigned int allchars=0, i,j , empty=0, spacewid=1;
   char *longest, *longest1, *longest2;
 
   if ( Red==NULL || Red[0]=='\0' ) { 
     empty++; red[0]=' '; red[1]='\0';
   } else { 
-    strncpy(red,Red,wid); allchars+=strlen(red); 
+    j=i=0; while ( (i<wid) && (Red[i] != '\0') ) { 
+      if (Red[i] !=' ') {red[j]=Red[i]; j++; }
+      i++;     
+    } red[j]='\0';
+    allchars+=strlen(red); 
   }
   if ( Green==NULL || Green[0]=='\0' )  { 
     empty++; green[0]=' '; green[1]='\0';
   } else { 
-    strncpy(green,Green,wid); allchars+=strlen(green); 
+    j=i=0; while ( (i<wid) && (Green[i] != '\0') ) { 
+      if (Green[i] !=' ') {green[j]=Green[i]; j++; }
+      i++;     
+    } green[j]='\0';
+    allchars+=strlen(green); 
   }
   if ( Yellow==NULL || Yellow[0]=='\0' ) { 
     empty++; yellow[0]=' '; yellow[1]='\0';
   } else { 
-    strncpy(yellow,Yellow,wid); allchars+=strlen(yellow); 
+    j=i=0; while ( (i<wid) && (Yellow[i] != '\0') ) { 
+      if (Yellow[i] !=' ') {yellow[j]=Yellow[i]; j++; }
+      i++;     
+    } yellow[j]='\0';
+    allchars+=strlen(yellow); 
   }
   if ( Blue==NULL || Blue[0]=='\0' ) { 
     empty++; blue[0]=' '; blue[1]='\0';
   } else { 
-    strncpy(blue,Blue,wid); allchars+=strlen(blue); 
+    j=i=0; while ( (i<wid) && (Blue[i] != '\0') ) { 
+      if (Blue[i] !=' ') {blue[j]=Blue[i]; j++; }
+      i++;     
+    } blue[j]='\0';
+    allchars+=strlen(blue); 
   }
 
   while (allchars > (wid-empty-3)) {
@@ -578,9 +599,9 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
 
 void cLcd::Action(void) { // LCD output thread
   unsigned int i,j, barx=1, bary=1, barl=0, ScrollState=0, ScrollLine=1, lasttitlelen=0; 
-  int Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight;
+  int Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight, keycnt=0;
   struct timeval now, voltime;
-  char workstring[256];
+  char workstring[1024], lastkeypressed='\0';
   cLcd::ThreadStates PrevState=Menu;
   struct cLcd::StateData OutStateData;
   bool Lcddirty[LCDMAXSTATES][4];
@@ -665,7 +686,7 @@ void cLcd::Action(void) { // LCD output thread
     
     if ( (now.tv_usec < WakeUpCycle) && (replayDvbApi) ) {
       char tempbuffer[16];
-      replayDvbApi->GetIndex(Current, Total, false);
+      replayDvbApi->GetIndex(Current, Total, false); Total=(Total==0)?1:Total;
       sprintf(tempbuffer,IndexToHMSF(Total));
       SetProgress(IndexToHMSF(Current),tempbuffer, (100 * Current) / Total);
     } 
@@ -851,12 +872,17 @@ void cLcd::Action(void) { // LCD output thread
       else
 	sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
     }	
-
-    workstring[0]='\0'; sock_recv(sock, workstring, 256);
+    
+    if ( !(keycnt=(keycnt+1)%4) ) lastkeypressed='\0';
+    
+    workstring[0]='\0'; sock_recv(sock, workstring, 1023); workstring[1024]='\0';
+    //if (workstring[0] != '\0') syslog(LOG_INFO, "%s",  workstring);	  
     if ( LcdMaxKeys && ( strlen(workstring) > 4 ) ) {
       for (i=0; i < (strlen(workstring)-4); i++ ) {	    
-	if (workstring[i]=='k' && workstring[i+1]=='e' && workstring[i+2]=='y' && workstring[i+3]==' ') {
-	  for (j=0; j<LcdMaxKeys && workstring[i+4]!=LcdUsedKeys[j]; j++ ) {}	
+	if (workstring[i]=='k' && workstring[i+1]=='e' && workstring[i+2]=='y' 
+			       && workstring[i+3]==' ' && workstring[i+4]!=lastkeypressed ) {
+          lastkeypressed=workstring[i+4];		
+	  for (j=0; j<LcdMaxKeys && workstring[i+4]!=LcdUsedKeys[j]; j++ ) {}
 	  if (workstring[i+4] == LcdShiftKey) {
 	    LcdShiftkeyPressed = ! LcdShiftkeyPressed;
 	    if (LcdShiftkeyPressed)
@@ -866,12 +892,12 @@ void cLcd::Action(void) { // LCD output thread
           }		  
 	  if ( (workstring[i+4] != LcdShiftKey) ) {
             if (LcdShiftkeyPressed) {		  
-	      syslog(LOG_INFO, "shiftkey  pressed: %c %d",  workstring[i+4],j);
+	      //syslog(LOG_INFO, "shiftkey  pressed: %c %d",  workstring[i+4],j);
 	      cRemote::Put(LcdShiftMap[j]);
 	      LcdShiftkeyPressed=false;
 	      sock_send_string(sock,"screen_set VDR -heartbeat off\n");
 	    } else {
-              syslog(LOG_INFO, "normalkey pressed: %c %d",  workstring[i+4],j);
+              //syslog(LOG_INFO, "normalkey pressed: %c %d",  workstring[i+4],j);
 	      cRemote::Put(LcdNormalMap[j]);
             }	    
           }		  
