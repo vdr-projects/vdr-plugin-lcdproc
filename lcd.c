@@ -32,7 +32,7 @@
 
 cLcd::cLcd() {
   int i,j;
-  connected=false; ThreadStateData.showvolume=false; sock=wid=hgt=cellwid=cellhgt=0;
+  connected=false; ThreadStateData.showvolume=false; ThreadStateData.newscroll=false; sock=wid=hgt=cellwid=cellhgt=0;
   replayDvbApi=NULL; primaryDvbApi=NULL;
   
   for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
@@ -132,6 +132,13 @@ void cLcd::SetMain( unsigned int n, const char *string) {
   char line3[wid+1];
 
   if (string != NULL) {
+    cLcd::Copy(ThreadStateData.lcdfullbuffer[n],string,LCDMAXFULLSTRING-3);
+    int i = strlen(ThreadStateData.lcdfullbuffer[n]);
+    ThreadStateData.lcdfullbuffer[n][i++]=' ';
+    ThreadStateData.lcdfullbuffer[n][i++]='*';
+    ThreadStateData.lcdfullbuffer[n][i++]=' ';
+    ThreadStateData.lcdfullbuffer[n][i]='\0';
+    ThreadStateData.newscroll=true;
     cLcd::Copy(StringBuffer,string,2*wid);
     cLcd::Split(StringBuffer,line2,line3);
   }
@@ -314,6 +321,7 @@ void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, c
     (string3==NULL || string3[0]=='\0')?"":"|",
     (string3==NULL || string3[0]=='\0')?" ":string3);
   cLcd::Copy(line1,line,2*wid);
+
   if (nownext) {
     cLcd::Split(line1,ThreadStateData.lcdbuffer[LCDMISC][2],ThreadStateData.lcdbuffer[LCDMISC][3]);
     ThreadStateData.lcddirty[LCDMISC][2]=true; ThreadStateData.lcddirty[LCDMISC][3]=true;
@@ -323,6 +331,14 @@ void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, c
       ThreadStateData.lcddirty[LCDTITLE][2]=true; ThreadStateData.lcddirty[LCDTITLE][3]=true;
     EndMutualExclusion();
     cLcd::SetBuffer(LCDMISC,ThreadStateData.lcdbuffer[LCDTITLE][2],ThreadStateData.lcdbuffer[LCDTITLE][3],NULL,NULL);
+
+    cLcd::Copy(ThreadStateData.lcdfullbuffer[LCDTITLE],line,LCDMAXFULLSTRING-3);
+    int i = strlen(ThreadStateData.lcdfullbuffer[LCDTITLE]);
+    ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' ';
+    ThreadStateData.lcdfullbuffer[LCDTITLE][i++]='*';
+    ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' '; 
+    ThreadStateData.lcdfullbuffer[LCDTITLE][i]='\0';  
+    ThreadStateData.newscroll=true;
   }
 }
 
@@ -503,8 +519,8 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
 #define VolumeKeep  1500000 // us
 
 void cLcd::Action(void) { // LCD output thread
-  unsigned int i,j, barx=1, bary=1, barl=0;
-  int Current=0, Total=1;
+  unsigned int i,j, barx=1, bary=1, barl=0, ScrollState=0, ScrollLine=1; 
+  int Current=0, Total=1, scrollpos=0,scrollspeed=3,scrollcnt=0, scrollwait=10, scrollwaitcnt=10;
   struct timeval now, voltime;
   char workstring[256];
   cLcd::ThreadStates PrevState=Menu;
@@ -546,7 +562,8 @@ void cLcd::Action(void) { // LCD output thread
                if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
                   SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
                   else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
-            }
+            } else 
+               SetRunning(false,"No EPG info available.\0", NULL);  // XXX tr !!!
             if ((Present = Schedule->GetFollowingEvent()) != NULL)
               nextLcdUpdate=(Present->GetTime()<nextLcdUpdate)?Present->GetTime():nextLcdUpdate;
          }
@@ -564,19 +581,59 @@ void cLcd::Action(void) { // LCD output thread
       replayDvbApi->GetIndex(Current, Total, false);
       sprintf(tempbuffer,IndexToHMSF(Total));
       SetProgress(IndexToHMSF(Current),tempbuffer, (100 * Current) / Total);
-    }  
+    } 
+
+    
     
     // copy 
     
     BeginMutualExclusion();  // all data needed for output are copied here  
       memcpy(&OutStateData,&ThreadStateData, sizeof (cLcd::StateData));
-      ThreadStateData.showvolume=false;  
+      ThreadStateData.showvolume=false;
+      if (ThreadStateData.newscroll) { scrollpos=0; scrollwaitcnt=scrollwait; ThreadStateData.newscroll=false; } 
       for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
 	ThreadStateData.lcddirty[i][j]=false;
         Lcddirty[i][j]= Lcddirty[i][j] || OutStateData.lcddirty[i][j];	
       }	
     EndMutualExclusion();
+
+    // scroller
     
+    if ( (OutStateData.State==PrevState) && ( PrevState == Replay || PrevState == Menu || PrevState == Title ) ) {
+      switch (PrevState) {
+	case Replay:
+	  ScrollState=LCDREPLAY; ScrollLine=1;	
+	break;  	
+	case Menu:
+	  ScrollState=LCDMENU;   ScrollLine=1;	
+	break;  	
+	case Title:
+	  ScrollState=LCDTITLE;  ScrollLine=2;	
+	break;  	
+        default:  
+        break; 
+      }
+      
+      if ( ( strlen(OutStateData.lcdfullbuffer[ScrollState]) > (2*wid+3) ) 
+  	    && !(scrollcnt=(scrollcnt+1)%scrollspeed) ) {
+	if ( (scrollpos) || (scrollwaitcnt-- < 1) ) {      
+          scrollpos=(scrollpos+1)%strlen(OutStateData.lcdfullbuffer[ScrollState]);
+          if  ( scrollpos==1 ) scrollwaitcnt=scrollwait;
+          for (i=0; i<wid; i++) {
+	    OutStateData.lcdbuffer[ScrollState][ScrollLine][i]=
+              OutStateData.lcdfullbuffer[ScrollState][(scrollpos+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
+          } 
+          OutStateData.lcdbuffer[ScrollState][ScrollLine][wid]='\0';
+          for (i=0; i<wid; i++) {
+	    OutStateData.lcdbuffer[ScrollState][ScrollLine+1][i]=
+	      OutStateData.lcdfullbuffer[ScrollState][(scrollpos+wid+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
+          } 
+          OutStateData.lcdbuffer[ScrollState][ScrollLine+1][wid]='\0';
+          Lcddirty[ScrollState][ScrollLine]=Lcddirty[ScrollState][ScrollLine+1]=true; 
+	}
+      }	    
+    }
+
     // volume  
    
     if (OutStateData.showvolume) gettimeofday(&voltime,NULL);
@@ -596,7 +653,7 @@ void cLcd::Action(void) { // LCD output thread
     switch (OutStateData.State) {
 
       case Menu: // display menu = 0
-        LineMode=1;
+        LineMode=1; if (!volume) { OutStateData.barx=1; OutStateData.bary=1; OutStateData.barl=0; }
         if (PrevState != Menu) for (i=0;i<4;i++) Lcddirty[LCDMENU][i]=true;
         for (i=0;i<4;i++) if (Lcddirty[LCDMENU][i]) {
           cLcd::Write(i+1,OutStateData.lcdbuffer[LCDMENU][i]);
@@ -625,7 +682,7 @@ void cLcd::Action(void) { // LCD output thread
           cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
           cLcd::Write(1,workstring);
         } 
-        if (PrevState != Replay) for (i=1;i<4;i++) Lcddirty[LCDREPLAY][i]=true;
+        if (PrevState != Replay) { scrollpos=0; for (i=1;i<4;i++) Lcddirty[LCDREPLAY][i]=true; }
         for (i=1;i<4;i++) if (Lcddirty[LCDREPLAY][i]) { 
           cLcd::Write(i+1,OutStateData.lcdbuffer[LCDREPLAY][i]); 
           Lcddirty[LCDREPLAY][i]=false; 

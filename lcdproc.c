@@ -1,5 +1,5 @@
 /*
- * status.c: A plugin for the Video Disk Recorder
+ * lcdproc.c: A plugin for the Video Disk Recorder
  *
  * See the README file for copyright information and how to reach the author.
  *
@@ -13,7 +13,7 @@
 #include <vdr/recording.h>
 #include "lcd.h"
 
-static const char *VERSION        = "0.0.2";
+static const char *VERSION        = "0.0.3";
 static const char *MAINMENUENTRY  = NULL;
 #ifdef  LCD_hd44780
 static const char *DESCRIPTION    = "LCDproc using hd44780 output-mapping";
@@ -58,7 +58,8 @@ void cLcdFeed::ChannelSwitch(const cDevice *Device, int ChannelNumber)
   syslog(LOG_INFO, "lcdproc: cLcdFeed::ChannelSwitch  %d %d", Device->CardIndex(), ChannelNumber);
   if (ChannelNumber) { 
     LCDproc->SetLine(1,2," "); 
-    LCDproc->SetLine(1,3," "); 
+    LCDproc->SetLine(1,3," ");
+    LCDproc->SetRunning(false,"No EPG info available.\0", NULL);  // XXX tr !!! 
     switched = true; 
   } else switched = false;
   if (Device) LCDproc->SetPrimaryDevice( (cDevice *) Device );
@@ -183,6 +184,7 @@ void cLcdFeed::OsdProgramme(time_t PresentTime, const char *PresentTitle, const 
   if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
     LCDproc->SetRunning(false,buffer,PresentTitle,PresentSubtitle);
   else if (!isempty(PresentTitle)) LCDproc->SetRunning(false,buffer,PresentTitle);
+  else LCDproc->SetRunning(false,"No EPG info available.\0", NULL);  // XXX tr !!!
 
 
   strftime(buffer, sizeof(buffer), "%R", localtime_r(&FollowingTime, &tm_r));
@@ -192,7 +194,7 @@ void cLcdFeed::OsdProgramme(time_t PresentTime, const char *PresentTitle, const 
   if ( (!isempty(FollowingTitle)) && (!isempty(FollowingSubtitle)) )
     LCDproc->SetRunning(true,buffer,FollowingTitle,FollowingSubtitle);
   else if (!isempty(FollowingTitle)) LCDproc->SetRunning(true,buffer,FollowingTitle);
-  
+  else LCDproc->SetRunning(true,"No EPG info available.\0", NULL); // XXX tr !!! 
 }
 
 // ---

@@ -12,6 +12,7 @@
 #define LCDMAXSTATEBUF 5
 #define LCDMAXWID 40
 #define LCDMAXCARDS 4
+#define LCDMAXFULLSTRING 1024
 
 class cLcd : public cThread {
   public:
@@ -22,7 +23,8 @@ class cLcd : public cThread {
     int LastStateP,LineMode;
     struct StateData {
       char lcdbuffer[LCDMAXSTATES][4][LCDMAXWID+1];
-      bool lcddirty[LCDMAXSTATES][4], muted, showvolume;
+      char lcdfullbuffer[LCDMAXSTATES][LCDMAXFULLSTRING];
+      bool lcddirty[LCDMAXSTATES][4], muted, showvolume, newscroll;
       ThreadStates State;
       unsigned int barx, bary, barl, volume;
       unsigned int CardStat[LCDMAXCARDS];
