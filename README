@@ -17,20 +17,22 @@ vdr -Plcdproc or -P"lcdproc -h <host> -p <port>" ... makes vdr connect to a LCDd
 Current channel info and menus are then displayed on the LCD too.
 
 I had a 4x20 character display in mind but it should
-work with 4x16 up to 4x40.
+work with 4x16 up to 4x40 and 2x40.
 
 LCDd can be used in an xterm or console too, so it
 might be useful even without having the hardware. 
 ( ./LCDd -d curses )
 
-lcdtranstbl-xxx.h is used to map characters for output to LCDd.
+lcdtranstbl.h is used to map characters for output to LCDd.
 Depending on the LCD hardware some characters may not displayed
-correctly, you can fix that by altering this table ...
-use lcdtranstbl-nomap.h if you don't want anything mapped.
-what table is used can be selected at compile time:
-e.g. ...  LCDTRANS=CFontz make plugins ... 
-values for LCDTRANS are 'hd44780', 'CFontz' and 'nomap' ('hd44780' is the default value). 
-Thanks to Stephan Schreiber <stephan@sschreiber.de> for lcdtranstbl-CFontz.h.
+correctly, you can fix that by selecting a in the setup menu: (Charmap)
+
+0 ... nomap         no mapping, useful for the curses driver
+1 ... hd44780       
+2 ... CFontz        Thanks to Stephan Schreiber <stephan@sschreiber.de>
+
+lcdkeyconf.h is used to configure the plugin for a keypad.
+
 
 LCDproc is available at http://lcdproc.omnipotent.net/
 or here http://sourceforge.net/projects/lcdproc/

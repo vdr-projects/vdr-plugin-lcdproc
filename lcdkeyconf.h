@@ -1,6 +1,9 @@
+#ifndef LCD_KEYTBL_H
+#define LCD_KEYTBL_H
 // LCDproc keys
 
-const unsigned int  LcdMaxKeys  = 25;
+const unsigned int  LcdMaxKeys  = 0;
+//const unsigned int  LcdMaxKeys  = 25;
 const unsigned char LcdShiftKey = '#';
 const unsigned char LcdUsedKeys[] = 
 
@@ -25,3 +28,6 @@ const eKeys  LcdShiftMap[] =
   kNone,  kNone,   kNone,  kNone, kNone,
   kNone,  kNone,   kNone,  kNone, kNone,
   kNone, kPower,   kNone,  kNone, kNone  };
+
+#endif
+

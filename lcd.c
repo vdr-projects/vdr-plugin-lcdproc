@@ -7,21 +7,14 @@
 #include <vdr/config.h>
 #include <vdr/tools.h>
 #include <vdr/remote.h>
+#include "setup.h"
 #include "lcd.h"
 #include "sockets.h"
 #include "lcdkeyconf.h"
 #include "i18n.h"
 
 // character mapping for output, see cLcd::Write
-#ifdef  LCD_hd44780
-#include "lcdtranstbl-hd44780.h" // hd44780 output 
-#endif
-#ifdef  LCD_CFontz
-#include "lcdtranstbl-CFontz.h" // CFontz output thanks to Stephan Schreiber. 
-#endif
-#ifdef  LCD_nomap
-#include "lcdtranstbl-nomap.h" // unmapped output (usable for curses output) 
-#endif
+#include "lcdtranstbl.h"  
 
 #define LCDMENU   0
 #define LCDTITLE  1
@@ -509,13 +502,10 @@ void cLcd::Write(int line, const char *string) { // used for any text output to 
   }	  
   out=strlen(workstring);
   for (i=0;(i<strlen(string)) && (i<wid);i++)
-    workstring[out++] = LcdTransTbl[ (unsigned char) string[i] ]; // char mapping see lcdtranstbl.h
+    workstring[out++] = LcdTransTbl[LcdSetup.Charmap][ (unsigned char) string[i] ]; // char mapping see lcdtranstbl.h
   workstring[out++] =  '"'; workstring[out++] =  '\n';  workstring[out]   = '\0';
   sock_send_string(sock,workstring);
 }
-
-#define FullCycle 10  // seconds
-#define TimeCycle 7   // seconds 
 
 void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
   time_t t;
@@ -531,7 +521,7 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
   t = time(NULL);
   now = localtime(&t);
 
-  if ( offset || !( ShowStates && ((t%FullCycle) >= TimeCycle) )) {  
+  if ( offset || !( ShowStates && ((t%LcdSetup.FullCycle) >= LcdSetup.TimeCycle) )) {  
     if (wid > 19) 
       snprintf(string,wid+1,"<%s %02d.%02d %02d:%02d:%02d>",
         WeekDayName(now->tm_wday), now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
@@ -540,7 +530,7 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
         now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
   }
 
-  if ( offset || ( ShowStates && ((t%FullCycle) >= TimeCycle) )) {
+  if ( offset || ( ShowStates && ((t%LcdSetup.FullCycle) >= LcdSetup.TimeCycle) )) {
     for (i=0; i<LCDMAXCARDS; i++) {
       snprintf(string+offset,5," %d:%c", i,States[ OutStateData[i] ] );
       offset+=4;
@@ -550,18 +540,23 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
 }
 
 #define WakeUpCycle 125000 // us 
-#define VolumeKeep  1500000 // us
 
 void cLcd::Action(void) { // LCD output thread
   unsigned int i,j, barx=1, bary=1, barl=0, ScrollState=0, ScrollLine=1; 
-  int Current=0, Total=1, scrollpos=0,scrollspeed=3,scrollcnt=0, scrollwait=10, scrollwaitcnt=10;
+  int Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight;
   struct timeval now, voltime;
   char workstring[256];
   cLcd::ThreadStates PrevState=Menu;
   struct cLcd::StateData OutStateData;
   bool Lcddirty[LCDMAXSTATES][4];
   bool LcdShiftkeyPressed=false;
-  
+ 
+  // backlight init 
+  if ((lastBackLight=LcdSetup.BackLight))
+    sock_send_string(sock,"backlight on\n");
+  else
+    sock_send_string(sock,"backlight off\n");
+      
   syslog(LOG_INFO, "LCD output thread started (pid=%d), display size: %dx%d", getpid(),hgt,wid);
   cLcd::Write(1," Welcome  to  V D R\0"); 
   cLcd::Write(2,"--------------------\0"); 
@@ -624,7 +619,7 @@ void cLcd::Action(void) { // LCD output thread
     BeginMutualExclusion();  // all data needed for output are copied here  
       memcpy(&OutStateData,&ThreadStateData, sizeof (cLcd::StateData));
       ThreadStateData.showvolume=false;
-      if (ThreadStateData.newscroll) { scrollpos=0; scrollwaitcnt=scrollwait; ThreadStateData.newscroll=false; } 
+      if (ThreadStateData.newscroll) { scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false; } 
       for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
 	ThreadStateData.lcddirty[i][j]=false;
         Lcddirty[i][j]= Lcddirty[i][j] || OutStateData.lcddirty[i][j];	
@@ -649,10 +644,10 @@ void cLcd::Action(void) { // LCD output thread
       }
       
       if ( ( strlen(OutStateData.lcdfullbuffer[ScrollState]) > (2*wid+3) ) 
-  	    && !(scrollcnt=(scrollcnt+1)%scrollspeed) ) {
-	if ( (scrollpos) || (scrollwaitcnt-- < 1) ) {      
+  	    && ( (scrollpos) || !(scrollwaitcnt=(scrollwaitcnt+1)%LcdSetup.Scrollwait) ) ) {
+	if ( !(scrollcnt=(scrollcnt+1)%LcdSetup.Scrollspeed)  ) {      
           scrollpos=(scrollpos+1)%strlen(OutStateData.lcdfullbuffer[ScrollState]);
-          if  ( scrollpos==1 ) scrollwaitcnt=scrollwait;
+          if  ( scrollpos==1 ) scrollwaitcnt=1;
           for (i=0; i<wid; i++) {
 	    OutStateData.lcdbuffer[ScrollState][ScrollLine][i]=
               OutStateData.lcdfullbuffer[ScrollState][(scrollpos+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
@@ -672,7 +667,7 @@ void cLcd::Action(void) { // LCD output thread
    
     if (OutStateData.showvolume) gettimeofday(&voltime,NULL);
     if ( voltime.tv_sec != 0) { // volume
-      if (  ((now.tv_sec - voltime.tv_sec)*1000000+now.tv_usec-voltime.tv_usec ) > 1500000  ) {
+      if (  ((now.tv_sec - voltime.tv_sec)*1000000+now.tv_usec-voltime.tv_usec ) > (100000*LcdSetup.VolumeKeep)  ) {
 	voltime.tv_sec=0;
         OutStateData.barx=1; OutStateData.bary=1; OutStateData.barl=0; volume=false;
       } else {
@@ -755,7 +750,26 @@ void cLcd::Action(void) { // LCD output thread
       barx=OutStateData.barx; bary=OutStateData.bary; barl=OutStateData.barl;          
     }
 
+    // backlight
+    
+    if ( lastBackLight != LcdSetup.BackLight) {
+      lastBackLight=LcdSetup.BackLight;
+      if (lastBackLight)
+	sock_send_string(sock,"backlight on\n");
+      else
+	sock_send_string(sock,"backlight off\n");
+    }	    
+    
     // keys
+    
+    if ( LcdMaxKeys && (lastAltShift != LcdSetup.AltShift) ) {
+      lastAltShift=LcdSetup.AltShift;
+      if (lastAltShift)
+	sock_send_string(sock,"screen_set VDR -heartbeat slash\n");
+      else
+	sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
+    }	    
+    
     workstring[0]='\0'; sock_recv(sock, workstring, 256);
     if ( LcdMaxKeys && ( strlen(workstring) > 4 ) ) {
       for (i=0; i < (strlen(workstring)-4); i++ ) {	    

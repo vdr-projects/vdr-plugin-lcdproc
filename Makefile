@@ -36,14 +36,9 @@ INCLUDES = -I$(VDRINC) -I$(DVBDIR)
 
 DEFINES = -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
-ifndef LCDTRANS
-LCDTRANS = hd44780
-endif
-DEFINES += -DLCD_$(LCDTRANS)
-
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o lcd.o sockets.o i18n.o
+OBJS = $(PLUGIN).o lcd.o sockets.o i18n.o setup.o
 
 ### The C++ compiler and options:
 

@@ -11,20 +11,14 @@
 #include <vdr/plugin.h>
 #include <vdr/status.h>
 #include <vdr/recording.h>
+#include "setup.h"
 #include "i18n.h"
 #include "lcd.h"
+#include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.5";
+static const char *VERSION        = "0.0.6";
 static const char *MAINMENUENTRY  = NULL;
-#ifdef  LCD_hd44780
-static const char *DESCRIPTION    = "LCDproc using hd44780 output-mapping";
-#endif
-#ifdef  LCD_CFontz
-static const char *DESCRIPTION    = "LCDproc using CFontz output-mapping";
-#endif
-#ifdef  LCD_nomap
-static const char *DESCRIPTION    = "LCDproc using no output-mapping";
-#endif
+static const char *DESCRIPTION    = "LCDproc output";
 
 cLcd *LCDproc = new cLcd;
 bool replaymode=false;
@@ -291,16 +285,61 @@ cOsdMenu *cPluginLcd::MainMenuAction(void)
   return NULL;
 }
 
+class cMenuSetupLcd : public cMenuSetupPage {
+  private:
+     cLcdSetup newLcdSetup;	  
+  protected:
+     virtual void Store(void);
+  public:
+     cMenuSetupLcd(void);
+};
+
+cMenuSetupLcd::cMenuSetupLcd(void)
+{
+  newLcdSetup=LcdSetup;	 
+  Add(new cMenuEditIntItem( tr("FullCycle"),          &newLcdSetup.FullCycle,LcdSetup.TimeCycle,999));
+  Add(new cMenuEditIntItem( tr("TimeDateCycle"),      &newLcdSetup.TimeCycle,0,LcdSetup.FullCycle));
+  Add(new cMenuEditIntItem( tr("VolumeKeep"),         &newLcdSetup.VolumeKeep,0,999));
+  Add(new cMenuEditIntItem( tr("Scrollwait"),         &newLcdSetup.Scrollwait,1,999));
+  Add(new cMenuEditIntItem( tr("Scrollspeed"),        &newLcdSetup.Scrollspeed,1,999));
+  Add(new cMenuEditIntItem( tr("Charmap"),            &newLcdSetup.Charmap,0,LCDMAXTRANSTBL-1 ));
+  Add(new cMenuEditBoolItem( tr("AltShift"),          &newLcdSetup.AltShift));
+  Add(new cMenuEditBoolItem( tr("BackLight"),         &newLcdSetup.BackLight));
+}
+
+void cMenuSetupLcd::Store(void)
+{
+  SetupStore("FullCycle",   LcdSetup.FullCycle   = newLcdSetup.FullCycle);
+  SetupStore("TimeCycle",   LcdSetup.TimeCycle   = newLcdSetup.TimeCycle);
+  SetupStore("VolumeKeep",  LcdSetup.VolumeKeep  = newLcdSetup.VolumeKeep);
+  SetupStore("Scrollwait",  LcdSetup.Scrollwait  = newLcdSetup.Scrollwait);
+  SetupStore("Scrollspeed", LcdSetup.Scrollspeed = newLcdSetup.Scrollspeed);
+  SetupStore("Charmap",     LcdSetup.Charmap     = newLcdSetup.Charmap);
+  SetupStore("AltShift",    LcdSetup.AltShift    = newLcdSetup.AltShift);
+  SetupStore("BackLight",   LcdSetup.BackLight   = newLcdSetup.BackLight);
+}
+
+
 cMenuSetupPage *cPluginLcd::SetupMenu(void)
 {
   // Return a setup menu in case the plugin supports one.
-  return NULL;
+  return new cMenuSetupLcd;
 }
 
 bool cPluginLcd::SetupParse(const char *Name, const char *Value)
 {
   // Parse your own setup parameters and store their values.
+  if      (!strcasecmp(Name, "FullCycle"))    LcdSetup.FullCycle   = atoi(Value);
+  else if (!strcasecmp(Name, "TimeCycle"))    LcdSetup.TimeCycle   = atoi(Value);
+  else if (!strcasecmp(Name, "VolumeKeep"))   LcdSetup.VolumeKeep  = atoi(Value);
+  else if (!strcasecmp(Name, "Scrollwait"))   LcdSetup.Scrollwait  = atoi(Value);
+  else if (!strcasecmp(Name, "Scrollspeed"))  LcdSetup.Scrollspeed = atoi(Value);
+  else if (!strcasecmp(Name, "Charmap"))      LcdSetup.Charmap     = atoi(Value);
+  else if (!strcasecmp(Name, "AltShift"))     LcdSetup.AltShift    = atoi(Value);
+  else if (!strcasecmp(Name, "BackLight"))    LcdSetup.BackLight   = atoi(Value);
+  else
   return false;
+  return true;
 }
 
 VDRPLUGINCREATOR(cPluginLcd); // Don't touch this!
