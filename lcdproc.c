@@ -16,7 +16,7 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.8";
+static const char *VERSION        = "0.0.9";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = "LCDproc output";
 
@@ -163,7 +163,8 @@ void cLcdFeed::OsdTextItem(const char *Text, bool Scroll)
   else if (Scroll) 
       LCDproc->SummaryUp();
     else
-      LCDproc->SummaryDown();	    
+      LCDproc->SummaryDown();
+  LCDproc->SetThreadState( (cLcd::ThreadStates) 3); // MISC    
   LCDproc->SummaryDisplay();
 }
 
@@ -346,10 +347,10 @@ cMenuSetupLcd::cMenuSetupLcd(void)
   Add(new cMenuEditIntItem( tr("Charmap"),            &newLcdSetup.Charmap,0,LCDMAXTRANSTBL-1 ));
   Add(new cMenuEditBoolItem( tr("AltShift"),          &newLcdSetup.AltShift));
   Add(new cMenuEditBoolItem( tr("BackLight"),         &newLcdSetup.BackLight));
-  Add(new cMenuEditIntItem( tr("OutputNumber"),         &newLcdSetup.OutputNumber));
+  Add(new cMenuEditIntItem( tr("OutputNumber"),       &newLcdSetup.OutputNumber));
   for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
-    sprintf(str2,"OutputNumber %d",i);
-    Add(new cMenuEditStraTrItem( tr(str2), &newLcdSetup.OutputFunction[i],14, OutputFunctionText));
+    sprintf(str2,"%s %d",tr("OutputNumber"),i);
+    Add(new cMenuEditStraTrItem( str2, &newLcdSetup.OutputFunction[i],14, OutputFunctionText));
   }
 }
 

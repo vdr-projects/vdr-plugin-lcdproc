@@ -161,21 +161,21 @@ const tI18nPhrase Phrases[] = {
     "BackLight",// TODO
     "BackLight",// TODO
   },
-{ "Output Number",
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
-    "Output Number",// TODO
+  { "OutputNumber",
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
+    "OutputNumber",// TODO
   },
   { NULL }
   };

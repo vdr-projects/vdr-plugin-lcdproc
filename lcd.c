@@ -410,9 +410,9 @@ void cLcd::SummaryDisplay() {
     if (SummaryCurrent+offset < SummaryTextL) {
       strncpy(workstring,SummaryText+SummaryCurrent+offset,wid+1);
       workstring[wid]='\0';
-      cLcd::SetLine(LCDMENU,i,workstring);
+      cLcd::SetLine(LCDMISC,i,workstring);
       offset+=wid;
-    } else cLcd::SetLine(LCDMENU,i," ");
+    } else cLcd::SetLine(LCDMISC,i," ");
   }
 }
 
