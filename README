@@ -1,0 +1,78 @@
+This is a "plugin" for the Video Disk Recorder (VDR).
+
+Written by:                  Martin Hammerschmid <martin@hammerschmid.com>
+
+Project's homepage:          home.pages.at/linux/dvb.html 
+
+Latest version available at: http://home.pages.at/linux/dvb.html 
+
+See the file COPYING for license information.
+
+Description: Output to LCD modules that are supported by LCDproc 
+
+-------------------------------------------------------------------------
+
+vdr -Plcdproc or -P"lcdproc -h <host> -p <port>" ... makes vdr connect to a LCDd.
+
+Current channel info and menus are then displayed on the LCD too.
+
+I had a 4x20 character display in mind but it should
+work with 4x16 up to 4x40.
+
+LCDd can be used in an xterm or console too, so it
+might be useful even without having the hardware. 
+( ./LCDd -d curses )
+
+lcdtranstbl-xxx.h is used to map characters for output to LCDd.
+Depending on the LCD hardware some characters may not displayed
+correctly, you can fix that by altering this table ...
+use lcdtranstbl-nomap.h if you don't want anything mapped.
+what table is used can be selected at compile time:
+e.g. ...  LCDTRANS=CFontz make plugins ... 
+values for LCDTRANS are 'hd44780', 'CFontz' and 'nomap' ('hd44780' is the default value). 
+Thanks to Stephan Schreiber <stephan@sschreiber.de> for lcdtranstbl-CFontz.h.
+
+LCDproc is available at http://lcdproc.omnipotent.net/
+or here http://sourceforge.net/projects/lcdproc/
+
+  What's needed to run a LCD?
+  
+   Hardware:
+
+     I used a single 4x20 LCD that works with the hd44780 8-bit driver on 
+     the printer port. 
+     ( availible at http://www.conrad.com/ product ID: 187275 
+       or see http://www.lcd-module.de/eng/doma/standard.htm )
+
+     printer port    LCD
+     ----------------------------------------------------------------------
+                     GND  (1) (used the PC's power suppy (black cable))
+                     +5V  (2) (used the PC's power suppy (red cable))
+                     Vadj (3) (contrast, conneced to GND works fine for me)
+
+     D0    (2)       D0   (7)
+     D1    (3)       D1   (8)
+     D2    (4)       D2   (9)
+     D3    (5)       D3  (10)
+     D4    (6)       D4  (11)
+     D5    (7)       D5  (12)
+     D6    (8)       D6  (13)
+     D7    (9)       D7  (14)
+     nSTRB (1)       EN   (6)
+     INIT (16)       RS   (4)
+                     RW   (5) (connected to GND (1) of the LCD)
+     GND  (18-25)
+                     --- optional for LCDs with background illumination ---
+                                   
+                     LED+ (15) (connected to +5V over a 100Ohm resisitor
+                                to make it not too bright)
+                     LED- (16) (connected to GND) 
+
+   Software:
+
+     Last tested with lcdproc-0.4.1 ( http://prdownloads.sourceforge.net/lcdproc/lcdproc-0.4.1.tar.gz )
+     LCDd -d HD44780 "-p 0x3bc -c winamp"
+     should run LCDd for the hardware described above conneceted to the
+     printer port (in my case the port's base address is 0x3bc).
+
+Martin 
