@@ -43,7 +43,7 @@ DEFINES += -DLCD_$(LCDTRANS)
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o lcd.o sockets.o
+OBJS = $(PLUGIN).o lcd.o sockets.o i18n.o
 
 ### The C++ compiler and options:
 

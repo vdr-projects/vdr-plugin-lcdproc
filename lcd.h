@@ -5,6 +5,7 @@
 #include <vdr/device.h>
 #include <vdr/player.h>
 #include <vdr/dvbplayer.h>
+#include "i18n.h"
 
 #define LCDPORT 13666
 #define LCDHOST "localhost"

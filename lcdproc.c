@@ -11,9 +11,10 @@
 #include <vdr/plugin.h>
 #include <vdr/status.h>
 #include <vdr/recording.h>
+#include "i18n.h"
 #include "lcd.h"
 
-static const char *VERSION        = "0.0.3";
+static const char *VERSION        = "0.0.4";
 static const char *MAINMENUENTRY  = NULL;
 #ifdef  LCD_hd44780
 static const char *DESCRIPTION    = "LCDproc using hd44780 output-mapping";
@@ -55,11 +56,11 @@ protected:
 
 void cLcdFeed::ChannelSwitch(const cDevice *Device, int ChannelNumber)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::ChannelSwitch  %d %d", Device->CardIndex(), ChannelNumber);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::ChannelSwitch  %d %d", Device->CardIndex(), ChannelNumber);
   if (ChannelNumber) { 
     LCDproc->SetLine(1,2," "); 
     LCDproc->SetLine(1,3," ");
-    LCDproc->SetRunning(false,"No EPG info available.\0", NULL);  // XXX tr !!! 
+    LCDproc->SetRunning(false,tr("Scanning for EPG info."), NULL); 
     switched = true; 
   } else switched = false;
   if (Device) LCDproc->SetPrimaryDevice( (cDevice *) Device );
@@ -67,7 +68,7 @@ void cLcdFeed::ChannelSwitch(const cDevice *Device, int ChannelNumber)
 
 void cLcdFeed::Recording(const cDevice *Device, const char *Name)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::Recording  %d %s", Device->CardIndex(), Name);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::Recording  %d %s", Device->CardIndex(), Name);
   if (Name)
     LCDproc->SetCardStat(Device->CardIndex(),2);
   else
@@ -76,7 +77,7 @@ void cLcdFeed::Recording(const cDevice *Device, const char *Name)
 
 void cLcdFeed::Replaying(const cControl *DvbPlayerControl, const char *Name)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::Replaying %s",  Name);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::Replaying %s",  Name);
   replaymode=(Name)?true:false;
   if ( replaymode ) {
     LCDproc->SetReplayDevice( (cDvbPlayerControl *) DvbPlayerControl);
@@ -93,13 +94,13 @@ void cLcdFeed::Replaying(const cControl *DvbPlayerControl, const char *Name)
 
 void cLcdFeed::SetVolume(int Volume, bool Absolute)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::SetVolume  %d %d", Volume, Absolute);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::SetVolume  %d %d", Volume, Absolute);
   LCDproc->ShowVolume( Volume, Absolute );
 }
 
 void cLcdFeed::OsdClear(void)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdClear");
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdClear");
 	  
   if (replaymode)
     LCDproc->SetThreadState( (cLcd::ThreadStates) 2); // Replaying
@@ -111,7 +112,7 @@ void cLcdFeed::OsdClear(void)
 
 void cLcdFeed::OsdTitle(const char *Title)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdTitle '%s'", Title);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdTitle '%s'", Title);
   LCDproc->Clear(0);
   LCDproc->SetTitle(Title);
   LCDproc->SetThreadState( (cLcd::ThreadStates) 0); // MENU
@@ -120,7 +121,7 @@ void cLcdFeed::OsdTitle(const char *Title)
 
 void cLcdFeed::OsdStatusMessage(const char *Message)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdStatusMessage '%s'", Message);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdStatusMessage '%s'", Message);
   if ( Message ) 
     if ( menumode ) 
       LCDproc->SetStatus(Message);
@@ -130,19 +131,19 @@ void cLcdFeed::OsdStatusMessage(const char *Message)
 
 void cLcdFeed::OsdHelpKeys(const char *Red, const char *Green, const char *Yellow, const char *Blue)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdHelpKeys %s - %s - %s - %s", Red, Green, Yellow, Blue);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdHelpKeys %s - %s - %s - %s", Red, Green, Yellow, Blue);
   LCDproc->SetHelp(0,Red, Green, Yellow, Blue);
 }
 
 void cLcdFeed::OsdCurrentItem(const char *Text)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdCurrentItem %s", Text);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdCurrentItem %s", Text);
   LCDproc->SetMain(0,Text);
 }
 
 void cLcdFeed::OsdTextItem(const char *Text, bool Scroll)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdTextItem %s %d", Text, Scroll);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdTextItem %s %d", Text, Scroll);
   if (Text) 
     LCDproc->SummaryInit( (char *) Text);
   else if (Scroll) 
@@ -154,7 +155,7 @@ void cLcdFeed::OsdTextItem(const char *Text, bool Scroll)
 
 void cLcdFeed::OsdChannel(const char *Text)
 {
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdChannel %s", Text);
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdChannel %s", Text);
   LCDproc->SetLineC(1,1,Text);
 
   bool switching = group = !isdigit(Text[0]);
@@ -175,26 +176,26 @@ void cLcdFeed::OsdProgramme(time_t PresentTime, const char *PresentTitle, const 
 {
   char buffer[25];
   struct tm tm_r;
-  syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdProgramme");
+  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdProgramme");
   strftime(buffer, sizeof(buffer), "%R", localtime_r(&PresentTime, &tm_r));
-  syslog(LOG_INFO, "%5s %s", buffer, PresentTitle);
-  syslog(LOG_INFO, "%5s %s", "", PresentSubtitle);
+  //syslog(LOG_INFO, "%5s %s", buffer, PresentTitle);
+  //syslog(LOG_INFO, "%5s %s", "", PresentSubtitle);
   
 
   if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
     LCDproc->SetRunning(false,buffer,PresentTitle,PresentSubtitle);
   else if (!isempty(PresentTitle)) LCDproc->SetRunning(false,buffer,PresentTitle);
-  else LCDproc->SetRunning(false,"No EPG info available.\0", NULL);  // XXX tr !!!
+  else LCDproc->SetRunning(false,tr("No EPG info available."), NULL); 
 
 
   strftime(buffer, sizeof(buffer), "%R", localtime_r(&FollowingTime, &tm_r));
-  syslog(LOG_INFO, "%5s %s", buffer, FollowingTitle);
-  syslog(LOG_INFO, "%5s %s", "", FollowingSubtitle);
+  //syslog(LOG_INFO, "%5s %s", buffer, FollowingTitle);
+  //syslog(LOG_INFO, "%5s %s", "", FollowingSubtitle);
   
   if ( (!isempty(FollowingTitle)) && (!isempty(FollowingSubtitle)) )
     LCDproc->SetRunning(true,buffer,FollowingTitle,FollowingSubtitle);
   else if (!isempty(FollowingTitle)) LCDproc->SetRunning(true,buffer,FollowingTitle);
-  else LCDproc->SetRunning(true,"No EPG info available.\0", NULL); // XXX tr !!! 
+  else LCDproc->SetRunning(true,tr("No EPG info available."), NULL); 
 }
 
 // ---
@@ -267,6 +268,7 @@ bool cPluginLcd::ProcessArgs(int argc, char *argv[])
 bool cPluginLcd::Start(void)
 {
   // Start any background activities the plugin shall perform.
+  RegisterI18n(Phrases);
   lcdFeed = new cLcdFeed;
   if ( LCDproc->Connect(LCDprocHOST,LCDprocPORT) ) {
     syslog(LOG_INFO, "connection to LCDd at %s:%d established.",LCDprocHOST,LCDprocPORT);

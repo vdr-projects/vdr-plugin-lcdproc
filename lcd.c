@@ -5,11 +5,11 @@
 #include <ctype.h>
 #include <sys/time.h>
 #include <vdr/config.h>
-#include <vdr/i18n.h>
 #include <vdr/tools.h>
 #include "lcd.h"
 #include "sockets.h"
 #include "lcdkeyconf.h"
+#include "i18n.h"
 
 // character mapping for output, see cLcd::Write
 #ifdef  LCD_hd44780
@@ -563,7 +563,7 @@ void cLcd::Action(void) { // LCD output thread
                   SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
                   else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
             } else 
-               SetRunning(false,"No EPG info available.\0", NULL);  // XXX tr !!!
+               SetRunning(false,tr("No EPG info available."), NULL); 
             if ((Present = Schedule->GetFollowingEvent()) != NULL)
               nextLcdUpdate=(Present->GetTime()<nextLcdUpdate)?Present->GetTime():nextLcdUpdate;
          }
@@ -599,8 +599,8 @@ void cLcd::Action(void) { // LCD output thread
 
     // scroller
     
-    if ( (OutStateData.State==PrevState) && ( PrevState == Replay || PrevState == Menu || PrevState == Title ) ) {
-      switch (PrevState) {
+    if ( (OutStateData.State==PrevState) && ( OutStateData.State == Replay || OutStateData.State == Menu || OutStateData.State == Title ) ) {
+      switch (OutStateData.State) {
 	case Replay:
 	  ScrollState=LCDREPLAY; ScrollLine=1;	
 	break;  	
