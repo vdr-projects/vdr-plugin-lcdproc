@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id$
+# $Id: Makefile 1.7 2003/12/21 15:47:41 kls Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -13,13 +13,21 @@ PLUGIN = lcdproc
 
 VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ print $$6 }' | sed -e 's/[";]//g')
 
+### The C++ compiler and options:
+
+CXX      ?= g++
+CXXFLAGS ?= -O2 -Wall -Woverloaded-virtual
+
 ### The directory environment:
 
-DVBDIR = ../../../../DVB/ost/include
+DVBDIR = ../../../../DVB
 VDRDIR = ../../..
-VDRINC = $(VDRDIR)/include
 LIBDIR = ../../lib
 TMPDIR = /tmp
+
+### Allow user defined options to overwrite defaults:
+
+-include $(VDRDIR)/Make.config
 
 ### The version number of VDR (taken from VDR's "config.h"):
 
@@ -32,22 +40,23 @@ PACKAGE = vdr-$(ARCHIVE)
 
 ### Includes and Defines (add further entries here):
 
-INCLUDES = -I$(VDRINC) -I$(DVBDIR)
+INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include
 
-DEFINES = -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
+DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
+
+ifeq ($(shell echo $(VDRVERSION)|sed -e 's/\([0-9]\.[0-9]\)\..*/\1/' ),1.2)
+  DEFINES += -DOLDVDR
+endif
 
 ifdef LCDKEYCONF
-DEFINES += -DLCD_EXT_KEY_CONF="\"$(LCDKEYCONF)\""
+  DEFINES += -DLCD_EXT_KEY_CONF="\"$(LCDKEYCONF)\""
 endif
+
+
 
 ### The object files (add further files here):
 
 OBJS = $(PLUGIN).o lcd.o sockets.o i18n.o setup.o
-
-### The C++ compiler and options:
-
-CXX      ?= g++
-CXXFLAGS ?= -g -O2 -Wall -Woverloaded-virtual
 
 ### Implicit rules:
 
@@ -71,7 +80,7 @@ libvdr-$(PLUGIN).so: $(OBJS)
 	$(CXX) $(CXXFLAGS) -shared $(OBJS) -o $@
 	@cp $@ $(LIBDIR)/$@.$(VDRVERSION)
 
-package: clean
+dist: clean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
 	@mkdir $(TMPDIR)/$(ARCHIVE)
 	@cp -a * $(TMPDIR)/$(ARCHIVE)

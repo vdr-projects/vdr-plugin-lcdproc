@@ -12,7 +12,12 @@ public:
   int Scrollspeed;	  
   int Charmap;	  
   int AltShift;	  
-  int BackLight;	  
+  int BackLight;
+  int SetPrio;
+  int ClientPrioN;
+  int ClientPrioH;
+  int BackLightWait;
+  int PrioWait;  
   int OutputNumber;
   int OutputFunction[LCDMAXOUTPUTS];
 public:

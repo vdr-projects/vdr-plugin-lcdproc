@@ -16,7 +16,7 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.9";
+static const char *VERSION        = "0.0.10";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = "LCDproc output";
 
@@ -45,7 +45,8 @@ static const char * OutputFunctionText[]= {"Off",
                                            "User2",
                                            "User3"};
 
-// ---
+
+static const char * PrioBackFunctionText[]= {"Off", "On", "Auto"};
 
 class cLcdFeed : public cStatus {
 protected:
@@ -339,15 +340,20 @@ cMenuSetupLcd::cMenuSetupLcd(void)
 {
   char str2[30];
   newLcdSetup=LcdSetup;	 
-  Add(new cMenuEditIntItem( tr("FullCycle"),          &newLcdSetup.FullCycle,LcdSetup.TimeCycle,999));
-  Add(new cMenuEditIntItem( tr("TimeDateCycle"),      &newLcdSetup.TimeCycle,0,LcdSetup.FullCycle));
-  Add(new cMenuEditIntItem( tr("VolumeKeep"),         &newLcdSetup.VolumeKeep,0,999));
-  Add(new cMenuEditIntItem( tr("Scrollwait"),         &newLcdSetup.Scrollwait,1,999));
-  Add(new cMenuEditIntItem( tr("Scrollspeed"),        &newLcdSetup.Scrollspeed,1,999));
-  Add(new cMenuEditIntItem( tr("Charmap"),            &newLcdSetup.Charmap,0,LCDMAXTRANSTBL-1 ));
-  Add(new cMenuEditBoolItem( tr("AltShift"),          &newLcdSetup.AltShift));
-  Add(new cMenuEditBoolItem( tr("BackLight"),         &newLcdSetup.BackLight));
-  Add(new cMenuEditIntItem( tr("OutputNumber"),       &newLcdSetup.OutputNumber));
+  Add(new cMenuEditIntItem( tr("FullCycle"),           &newLcdSetup.FullCycle,1,999));
+  Add(new cMenuEditIntItem( tr("TimeDateCycle"),       &newLcdSetup.TimeCycle,0,LcdSetup.FullCycle));
+  Add(new cMenuEditIntItem( tr("VolumeKeep"),          &newLcdSetup.VolumeKeep,0,999));
+  Add(new cMenuEditIntItem( tr("Scrollwait"),          &newLcdSetup.Scrollwait,1,999));
+  Add(new cMenuEditIntItem( tr("Scrollspeed"),         &newLcdSetup.Scrollspeed,1,999));
+  Add(new cMenuEditIntItem( tr("Charmap"),             &newLcdSetup.Charmap,0,LCDMAXTRANSTBL-1 ));
+  Add(new cMenuEditBoolItem( tr("AltShift"),           &newLcdSetup.AltShift));
+  Add(new cMenuEditStraItem( tr("BackLight"),          &newLcdSetup.BackLight, 3, PrioBackFunctionText));
+  Add(new cMenuEditStraItem( tr("SetClientPriority"),  &newLcdSetup.SetPrio, 3, PrioBackFunctionText));
+  Add(new cMenuEditIntItem( tr("NormalClientPriority"),&newLcdSetup.ClientPrioN,0,255));
+  Add(new cMenuEditIntItem( tr("HighClientPriority"),  &newLcdSetup.ClientPrioH,0,255));
+  Add(new cMenuEditIntItem( tr("BackLightWait"),       &newLcdSetup.BackLightWait,1,99));
+  Add(new cMenuEditIntItem( tr("PrioWait"),            &newLcdSetup.PrioWait,1,99));
+  Add(new cMenuEditIntItem( tr("OutputNumber"),        &newLcdSetup.OutputNumber));
   for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
     sprintf(str2,"%s %d",tr("OutputNumber"),i);
     Add(new cMenuEditStraTrItem( str2, &newLcdSetup.OutputFunction[i],14, OutputFunctionText));
@@ -365,7 +371,12 @@ void cMenuSetupLcd::Store(void)
   SetupStore("Charmap",     LcdSetup.Charmap     = newLcdSetup.Charmap);
   SetupStore("AltShift",    LcdSetup.AltShift    = newLcdSetup.AltShift);
   SetupStore("BackLight",   LcdSetup.BackLight   = newLcdSetup.BackLight);
-  SetupStore("OutputNumber",   LcdSetup.OutputNumber   = newLcdSetup.OutputNumber);
+  SetupStore("SetPrio",     LcdSetup.SetPrio     = newLcdSetup.SetPrio);
+  SetupStore("ClientPrioN", LcdSetup.ClientPrioN = newLcdSetup.ClientPrioN);
+  SetupStore("ClientPrioH", LcdSetup.ClientPrioH = newLcdSetup.ClientPrioH);
+  SetupStore("BackLightWait", LcdSetup.ClientPrioH = newLcdSetup.BackLightWait);
+  SetupStore("PrioWait",    LcdSetup.ClientPrioH = newLcdSetup.PrioWait);
+  SetupStore("OutputNumber",LcdSetup.OutputNumber   = newLcdSetup.OutputNumber);
   for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
     sprintf(str2,"OutputNumber %d",i);
     SetupStore(str2,   LcdSetup.OutputFunction[i]   = newLcdSetup.OutputFunction[i]);
@@ -390,7 +401,12 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Charmap"))      LcdSetup.Charmap     = atoi(Value);
   else if (!strcasecmp(Name, "AltShift"))     LcdSetup.AltShift    = atoi(Value);
   else if (!strcasecmp(Name, "BackLight"))    LcdSetup.BackLight   = atoi(Value);
-  else if (!strcasecmp(Name, "OutputNumber")) LcdSetup.OutputNumber   = atoi(Value);
+  else if (!strcasecmp(Name, "SetPrio"))      LcdSetup.SetPrio     = atoi(Value);
+  else if (!strcasecmp(Name, "ClientPrioN"))  LcdSetup.ClientPrioN = atoi(Value);
+  else if (!strcasecmp(Name, "ClientPrioH"))  LcdSetup.ClientPrioH = atoi(Value);
+  else if (!strcasecmp(Name, "BackLightWait"))  LcdSetup.BackLightWait = atoi(Value);
+  else if (!strcasecmp(Name, "PrioWait"))     LcdSetup.PrioWait = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber")) LcdSetup.OutputNumber= atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 0")) LcdSetup.OutputFunction[0]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 1")) LcdSetup.OutputFunction[1]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 2")) LcdSetup.OutputFunction[2]   = atoi(Value);

@@ -16,6 +16,7 @@ const tI18nPhrase Phrases[] = {
     "No EPG info available.",// TODO
     "No EPG info available.",// TODO
     "No EPG info available.",// TODO
+    "No EPG info available.",// TODO
   },
   { "Waiting for EPG info.",
     "Suche nach EPG Information.",
@@ -32,8 +33,10 @@ const tI18nPhrase Phrases[] = {
     "Scanning for EPG info.",// TODO
     "Scanning for EPG info.",// TODO
     "Scanning for EPG info.",// TODO
+    "Scanning for EPG info.",// TODO
   },
   { "FullCycle",
+    "FullCycle",// TODO
     "FullCycle",// TODO
     "FullCycle",// TODO
     "FullCycle",// TODO
@@ -64,8 +67,10 @@ const tI18nPhrase Phrases[] = {
     "TimeDateCycle",// TODO
     "TimeDateCycle",// TODO
     "TimeDateCycle",// TODO
+    "TimeDateCycle",// TODO
   },
   { "VolumeKeep",
+    "VolumeKeep",// TODO
     "VolumeKeep",// TODO
     "VolumeKeep",// TODO
     "VolumeKeep",// TODO
@@ -96,8 +101,10 @@ const tI18nPhrase Phrases[] = {
     "Scrollwait",// TODO
     "Scrollwait",// TODO
     "Scrollwait",// TODO
+    "Scrollwait",// TODO
   },
   { "Scrollspeed",
+    "Scrollspeed",// TODO
     "Scrollspeed",// TODO
     "Scrollspeed",// TODO
     "Scrollspeed",// TODO
@@ -128,8 +135,10 @@ const tI18nPhrase Phrases[] = {
     "Charmap",// TODO
     "Charmap",// TODO
     "Charmap",// TODO
+    "Charmap",// TODO
   },
   { "AltShift",
+    "AltShift",// TODO
     "AltShift",// TODO
     "AltShift",// TODO
     "AltShift",// TODO
@@ -160,8 +169,10 @@ const tI18nPhrase Phrases[] = {
     "BackLight",// TODO
     "BackLight",// TODO
     "BackLight",// TODO
+    "BackLight",// TODO
   },
   { "OutputNumber",
+    "OutputNumber",// TODO
     "OutputNumber",// TODO
     "OutputNumber",// TODO
     "OutputNumber",// TODO

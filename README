@@ -31,6 +31,7 @@ correctly, you can fix that by selecting a in the setup menu: (Charmap)
 0 ... nomap         no mapping, useful for the curses driver
 1 ... hd44780       
 2 ... CFontz        Thanks to Stephan Schreiber <stephan@sschreiber.de>
+3 ... SGX120        Thanks to Harald Milz <hm@seneca.muc.de>
 
 lcdkeyconf.h is used to configure the plugin for a keypad.
 you can use a different file instead with

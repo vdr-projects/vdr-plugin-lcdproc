@@ -2,8 +2,8 @@
 #define LCD_KEYTBL_H
 // LCDproc keys
 
-const unsigned int  LcdMaxKeys  = 0;
-//const unsigned int  LcdMaxKeys  = 25;
+//const unsigned int  LcdMaxKeys  = 0;
+const unsigned int  LcdMaxKeys  = 25;
 const unsigned char LcdShiftKey = '#';
 const unsigned char LcdUsedKeys[] = 
 
@@ -23,11 +23,11 @@ const eKeys LcdNormalMap[] =
 
 const eKeys  LcdShiftMap[] = 
 
-{ kNone,  kNone,   kNone,  kNone, kNone,   
-  kNone,  kNone,   kNone,  kNone, kNone,
-  kNone,  kNone,   kNone,  kNone, kNone,
-  kNone,  kNone,   kNone,  kNone, kNone,
-  kNone, kPower,   kNone,  kNone, kNone  };
+{    kPlay,      kPause,  kStop,    kRecord, kFastFwd,   
+  kFastRew,     kChanUp, kChanDn, kSchedule, kChannels,
+   kTimers, kRecordings,  kSetup, kCommands, kNone,
+    kUser1,      kUser2,  kUser3,    kUser4, kUser5,
+    kUser6,      kUser7,  kUser8,    kUser9, kPower  };
 
 #endif
 

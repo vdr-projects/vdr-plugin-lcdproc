@@ -353,6 +353,9 @@ void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, c
   char line[1024];
   char line1[1024];
 
+  static char now1[LCDMAXWID+1];
+  static char now2[LCDMAXWID+1];
+  
   snprintf(line,1024,"%s %s%s%s",
     (string1==NULL || string1[0]=='\0')?" ":string1,
     (string2==NULL || string2[0]=='\0')?" ":string2,
@@ -367,6 +370,7 @@ void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, c
       cLcd::Split(line1,ThreadStateData.lcdbuffer[LCDMISC][2],ThreadStateData.lcdbuffer[LCDMISC][3]);
       ThreadStateData.lcddirty[LCDMISC][2]=true; ThreadStateData.lcddirty[LCDMISC][3]=true;
     EndMutualExclusion();  
+    cLcd::SetBuffer(LCDMISC,now1,now2,NULL,NULL);
   } else {
     BeginMutualExclusion();
       cLcd::Split(line1,ThreadStateData.lcdbuffer[LCDTITLE][2],ThreadStateData.lcdbuffer[LCDTITLE][3]);
@@ -377,8 +381,10 @@ void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, c
       ThreadStateData.lcdfullbuffer[LCDTITLE][i++]='*';
       ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' '; 
       ThreadStateData.lcdfullbuffer[LCDTITLE][i]='\0';  
+      sprintf(now1,"%s",ThreadStateData.lcdbuffer[LCDTITLE][2]);
+      sprintf(now2,"%s",ThreadStateData.lcdbuffer[LCDTITLE][3]);
     EndMutualExclusion();
-    cLcd::SetBuffer(LCDMISC,ThreadStateData.lcdbuffer[LCDTITLE][2],ThreadStateData.lcdbuffer[LCDTITLE][3],NULL,NULL);
+    
   }
 }
 
@@ -599,19 +605,30 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
 
 void cLcd::Action(void) { // LCD output thread
   unsigned int i,j, barx=1, bary=1, barl=0, ScrollState=0, ScrollLine=1, lasttitlelen=0; 
-  int Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight, keycnt=0;
+  int Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight,lastPrio, lastPrioN, keycnt=0;
   struct timeval now, voltime;
   char workstring[1024], lastkeypressed='\0';
   cLcd::ThreadStates PrevState=Menu;
   struct cLcd::StateData OutStateData;
   bool Lcddirty[LCDMAXSTATES][4];
   bool LcdShiftkeyPressed=false;
- 
+  char priostring[35];
+  
   // backlight init 
   if ((lastBackLight=LcdSetup.BackLight))
     sock_send_string(sock,"backlight on\n");
   else
     sock_send_string(sock,"backlight off\n");
+
+  // prio init
+  if ( (lastPrio=LcdSetup.SetPrio) ) { 
+    if (LcdSetup.SetPrio == 1)  
+      sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioN );
+    else 
+      sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioH );
+    sock_send_string(sock,priostring);
+  } 
+  lastPrioN=LcdSetup.ClientPrioN;
       
   syslog(LOG_INFO, "LCD output thread started (pid=%d), display size: %dx%d", getpid(),hgt,wid);
   cLcd::Write(1," Welcome  to  V D R\0"); 
@@ -653,14 +670,16 @@ void cLcd::Action(void) { // LCD output thread
     gettimeofday(&now,NULL);
 
     //  epg update
- 
-    if ( time(NULL) > nextLcdUpdate ) { 
+
+#ifdef OLDVDR
+
+    if ( time(NULL) > nextLcdUpdate ) {
       const cEventInfo *Present = NULL;
       cMutexLock MutexLock;
       const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
-      if (Schedules) { 
+      if (Schedules) {
          const cSchedule *Schedule = Schedules->GetSchedule();
-         if (Schedule) { 
+         if (Schedule) {
             const char *PresentTitle, *PresentSubtitle;
             PresentTitle = NULL; PresentSubtitle = NULL;
             if ((Present = Schedule->GetPresentEvent()) != NULL) {
@@ -670,8 +689,8 @@ void cLcd::Action(void) { // LCD output thread
                if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
                   SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
                   else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
-            } else 
-               SetRunning(false,tr("No EPG info available."), NULL); 
+            } else
+               SetRunning(false,tr("No EPG info available."), NULL);
             if ((Present = Schedule->GetFollowingEvent()) != NULL)
               nextLcdUpdate=(Present->GetTime()<nextLcdUpdate)?Present->GetTime():nextLcdUpdate;
          }
@@ -680,7 +699,40 @@ void cLcd::Action(void) { // LCD output thread
          nextLcdUpdate=(time(NULL)/60)*60+60;
       else if ( nextLcdUpdate > time(NULL)+60 )
          nextLcdUpdate=(time(NULL)/60)*60+60;
+    }
+
+#else
+   
+    if ( time(NULL) > nextLcdUpdate ) { 
+      cChannel *channel = Channels.GetByNumber(primaryDvbApi->CurrentChannel());
+      const cEvent *Present = NULL;
+      cSchedulesLock schedulesLock;
+      const cSchedules *Schedules = cSchedules::Schedules(schedulesLock); 
+      if (Schedules) {
+         const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID()); 
+         if (Schedule) { 
+            const char *PresentTitle, *PresentSubtitle;
+            PresentTitle = NULL; PresentSubtitle = NULL;
+            if ((Present = Schedule->GetPresentEvent()) != NULL) {
+               nextLcdUpdate=Present->StartTime()+Present->Duration();
+               PresentTitle = Present->Title();
+               PresentSubtitle = Present->ShortText();
+               if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
+                  SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
+                  else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
+            } else 
+               SetRunning(false,tr("No EPG info available."), NULL); 
+            if ((Present = Schedule->GetFollowingEvent()) != NULL)
+              nextLcdUpdate=(Present->StartTime()<nextLcdUpdate)?Present->StartTime():nextLcdUpdate;
+         }
+      }
+     if ( nextLcdUpdate <= time(NULL) )
+         nextLcdUpdate=(time(NULL)/60)*60+60;
+      else if ( nextLcdUpdate > time(NULL)+60 )
+         nextLcdUpdate=(time(NULL)/60)*60+60;
     }  
+
+#endif
 
     // replaying
     
@@ -770,6 +822,10 @@ void cLcd::Action(void) { // LCD output thread
       }	      
     }	    
     if (volume) OutStateData.State = Vol;
+
+    // prio
+    
+    
     // modes
     
     switch (OutStateData.State) {
@@ -863,15 +919,6 @@ void cLcd::Action(void) { // LCD output thread
 	sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
     }	    
     
-
-
-    if ( LcdMaxKeys && (lastAltShift != LcdSetup.AltShift) ) {
-      lastAltShift=LcdSetup.AltShift;
-      if (lastAltShift)
-	sock_send_string(sock,"screen_set VDR -heartbeat slash\n");
-      else
-	sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
-    }	
     
     if ( !(keycnt=(keycnt+1)%4) ) lastkeypressed='\0';
     
