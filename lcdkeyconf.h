@@ -1,7 +1,27 @@
 // LCDproc keys
 
-const unsigned int  LcdMaxKeys  = 5;
+const unsigned int  LcdMaxKeys  = 25;
 const unsigned char LcdShiftKey = '#';
-const unsigned char LcdUsedKeys[LcdMaxKeys] = {'0', '3', '6', 'A', '#'};
-//const eKeys LcdNormalMap[LcdMaxKeys] = { kBack, kLeft, kPower, kVolDn,  kMute};
-//const eKeys  LcdShiftMap[LcdMaxKeys] = {    k1,    k2,    kOk,     k4,     k8};
+const unsigned char LcdUsedKeys[] = 
+
+{   '0',    '1',     '2',    '3',   '4', 
+    '5',    '6',     '7',    '8',   '9', 
+    'q',    'w',     'e',    'r',   'm', 
+    'o',    'b',     'x',    'c',   'a', 
+    'y',    's',     'd',    'f',   '#'  };
+
+const eKeys LcdNormalMap[] = 
+
+{    k0,     k1,      k2,     k3,    k4,
+     k5,     k6,      k7,     k8,    k9,
+   kRed, kGreen, kYellow,  kBlue, kMenu,
+    kOk,  kBack,   kLeft, kRight,   kUp,
+  kDown, kVolDn,  kVolUp,  kMute, kNone  };
+
+const eKeys  LcdShiftMap[] = 
+
+{ kNone,  kNone,   kNone,  kNone, kNone,   
+  kNone,  kNone,   kNone,  kNone, kNone,
+  kNone,  kNone,   kNone,  kNone, kNone,
+  kNone,  kNone,   kNone,  kNone, kNone,
+  kNone, kPower,   kNone,  kNone, kNone  };

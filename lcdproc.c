@@ -14,7 +14,7 @@
 #include "i18n.h"
 #include "lcd.h"
 
-static const char *VERSION        = "0.0.4";
+static const char *VERSION        = "0.0.5";
 static const char *MAINMENUENTRY  = NULL;
 #ifdef  LCD_hd44780
 static const char *DESCRIPTION    = "LCDproc using hd44780 output-mapping";
@@ -30,6 +30,7 @@ cLcd *LCDproc = new cLcd;
 bool replaymode=false;
 bool menumode=false;
 bool switched=false;
+bool textitem=false;
 bool group=false;
 char tempstringbuffer[80];
 char *LCDprocHOST=LCDHOST;
@@ -113,10 +114,12 @@ void cLcdFeed::OsdClear(void)
 void cLcdFeed::OsdTitle(const char *Title)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdTitle '%s'", Title);
-  LCDproc->Clear(0);
-  LCDproc->SetTitle(Title);
-  LCDproc->SetThreadState( (cLcd::ThreadStates) 0); // MENU
-  menumode=true;
+  if ( ! textitem ) {
+    LCDproc->Clear(0);
+    LCDproc->SetTitle(Title);
+    LCDproc->SetThreadState( (cLcd::ThreadStates) 0); // MENU
+  }
+  menumode=true; textitem=false;
 }
 
 void cLcdFeed::OsdStatusMessage(const char *Message)

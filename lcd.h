@@ -69,7 +69,7 @@ class cLcd : public cThread {
     void BeginMutualExclusion();
     void EndMutualExclusion();    
     void Copy(char *to, const char *from, unsigned int max);
-    void Split(const char *string, char *string1, char *string2);
+    void Split(char *string, char *string1, char *string2);
     void Write(int line, const char *string);
     void GetTimeDateStat( char *string, unsigned int OutStateData[] );
     void Action(void);

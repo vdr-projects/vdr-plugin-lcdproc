@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <vdr/config.h>
 #include <vdr/tools.h>
+#include <vdr/remote.h>
 #include "lcd.h"
 #include "sockets.h"
 #include "lcdkeyconf.h"
@@ -141,8 +142,11 @@ void cLcd::SetMain( unsigned int n, const char *string) {
     ThreadStateData.newscroll=true;
     cLcd::Copy(StringBuffer,string,2*wid);
     cLcd::Split(StringBuffer,line2,line3);
+    cLcd::SetBuffer(n,NULL,line2,line3,NULL);
+  } else {
+    //cLcd::SetBuffer(n,NULL," \0"," \0",NULL);
+    ThreadStateData.lcdfullbuffer[n][0]='\0';
   }
-  cLcd::SetBuffer(n,NULL,line2,line3,NULL);
 }
 
 void cLcd::SetHelp( unsigned int n, const char *Red, const char *Green, const char *Yellow, const char *Blue) {
@@ -312,33 +316,36 @@ void cLcd::SetBuffer(unsigned int n, const char *l1,const char *l2,const char *l
 void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, const char *string3) {
   if (!connected) return;
 
-  char line[256];
-  char line1[256];
+  char line[1024];
+  char line1[1024];
 
-  snprintf(line,256,"%s %s%s%s",
+  snprintf(line,1024,"%s %s%s%s",
     (string1==NULL || string1[0]=='\0')?" ":string1,
     (string2==NULL || string2[0]=='\0')?" ":string2,
     (string3==NULL || string3[0]=='\0')?"":"|",
     (string3==NULL || string3[0]=='\0')?" ":string3);
   cLcd::Copy(line1,line,2*wid);
-
+ 
+  
+  
   if (nownext) {
-    cLcd::Split(line1,ThreadStateData.lcdbuffer[LCDMISC][2],ThreadStateData.lcdbuffer[LCDMISC][3]);
-    ThreadStateData.lcddirty[LCDMISC][2]=true; ThreadStateData.lcddirty[LCDMISC][3]=true;
+    BeginMutualExclusion();    
+      cLcd::Split(line1,ThreadStateData.lcdbuffer[LCDMISC][2],ThreadStateData.lcdbuffer[LCDMISC][3]);
+      ThreadStateData.lcddirty[LCDMISC][2]=true; ThreadStateData.lcddirty[LCDMISC][3]=true;
+    EndMutualExclusion();  
   } else {
     BeginMutualExclusion();
       cLcd::Split(line1,ThreadStateData.lcdbuffer[LCDTITLE][2],ThreadStateData.lcdbuffer[LCDTITLE][3]);
       ThreadStateData.lcddirty[LCDTITLE][2]=true; ThreadStateData.lcddirty[LCDTITLE][3]=true;
+      cLcd::Copy(ThreadStateData.lcdfullbuffer[LCDTITLE],line,LCDMAXFULLSTRING-3);
+      int i = strlen(ThreadStateData.lcdfullbuffer[LCDTITLE]);
+      ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' ';
+      ThreadStateData.lcdfullbuffer[LCDTITLE][i++]='*';
+      ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' '; 
+      ThreadStateData.lcdfullbuffer[LCDTITLE][i]='\0';  
+      ThreadStateData.newscroll=true;
     EndMutualExclusion();
     cLcd::SetBuffer(LCDMISC,ThreadStateData.lcdbuffer[LCDTITLE][2],ThreadStateData.lcdbuffer[LCDTITLE][3],NULL,NULL);
-
-    cLcd::Copy(ThreadStateData.lcdfullbuffer[LCDTITLE],line,LCDMAXFULLSTRING-3);
-    int i = strlen(ThreadStateData.lcdfullbuffer[LCDTITLE]);
-    ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' ';
-    ThreadStateData.lcdfullbuffer[LCDTITLE][i++]='*';
-    ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' '; 
-    ThreadStateData.lcdfullbuffer[LCDTITLE][i]='\0';  
-    ThreadStateData.newscroll=true;
   }
 }
 
@@ -452,8 +459,35 @@ void cLcd::Copy(char *to, const char *from, unsigned int max) { // eliminates ta
   }
 }
 
-void cLcd::Split(const char *string, char *string1, char *string2) {
+void cLcd::Split(char *string, char *string1, char *string2) {
 
+  unsigned int  i,j,k,ofs;
+
+  if ( (hgt>2 && strlen(string) < 2*wid) && strlen(string) > wid ) {  // beautification ..
+	  
+    if (isalpha(string[wid-1]) && isalpha(string[wid])  ) {
+      j=strlen(string);	    
+      for (i=wid-1; (i>0) && (string[i]!=' ') && (string[i]!='|') && (string[i]!=',')
+		          && (string[i]!='-') && (string[i]!='.') && (string[i]!=':') ; i-- ) {}
+      
+      if ( ( (2*wid-j) >= (ofs=wid-(i+1)) ) && ofs+j <= 2*wid   ) {
+	string[j+ofs]='\0';  
+	for (k=j+ofs-1;k>i+ofs; k-- ) string[k]=string[k-ofs];
+        for (k=0;k<ofs;k++) string[i+k+1]=' ';	
+      }
+     
+    }
+
+    if ( (j=strlen(string)) < 2*wid && isdigit(string[0]) && isdigit(string[1]) && 
+		     string[2]==':' && isdigit(string[3]) && isdigit(string[4])   ) {
+      ofs=2*wid-strlen(string); ofs=(ofs>6)?6:ofs;
+      string[j+ofs]='\0';
+      for (i=j+ofs-1; i>=wid+ofs;i--) string[i]=string[i-ofs];       
+      for (i=wid;i<wid+ofs;i++) string[i]=' '; 	    
+    }
+  }
+
+	
   strncpy(string1,string,wid+1);
   if ( strlen(string) >wid ) {
     strncpy(string2,string+wid,wid+1);
@@ -723,9 +757,10 @@ void cLcd::Action(void) { // LCD output thread
 
     // keys
     workstring[0]='\0'; sock_recv(sock, workstring, 256);
-    if ( strlen(workstring) > 4 ) {
+    if ( LcdMaxKeys && ( strlen(workstring) > 4 ) ) {
       for (i=0; i < (strlen(workstring)-4); i++ ) {	    
 	if (workstring[i]=='k' && workstring[i+1]=='e' && workstring[i+2]=='y' && workstring[i+3]==' ') {
+	  for (j=0; j<LcdMaxKeys && workstring[i+4]!=LcdUsedKeys[j]; j++ ) {}	
 	  if (workstring[i+4] == LcdShiftKey) {
 	    LcdShiftkeyPressed = ! LcdShiftkeyPressed;
 	    if (LcdShiftkeyPressed)
@@ -735,11 +770,13 @@ void cLcd::Action(void) { // LCD output thread
           }		  
 	  if ( (workstring[i+4] != LcdShiftKey) ) {
             if (LcdShiftkeyPressed) {		  
-	      syslog(LOG_INFO, "shiftkey  pressed: %c",  workstring[i+4] );
+	      syslog(LOG_INFO, "shiftkey  pressed: %c %d",  workstring[i+4],j);
+	      cRemote::Put(LcdShiftMap[j]);
 	      LcdShiftkeyPressed=false;
 	      sock_send_string(sock,"screen_set VDR -heartbeat off\n");
 	    } else {
-              syslog(LOG_INFO, "normalkey pressed: %c",  workstring[i+4] );
+              syslog(LOG_INFO, "normalkey pressed: %c %d",  workstring[i+4],j);
+	      cRemote::Put(LcdNormalMap[j]);
             }	    
           }		  
 	}       	
