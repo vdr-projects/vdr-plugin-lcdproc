@@ -26,7 +26,7 @@
 
 cLcd::cLcd() {
   int i,j;
-  connected=false; ThreadStateData.showvolume=false; ThreadStateData.newscroll=false; sock=wid=hgt=cellwid=cellhgt=0;
+  connected=false; ThreadStateData.showvolume=false; ThreadStateData.newscroll=false; sock=wid=hgt=cellwid=cellhgt=0;closing = false;
   replayDvbApi=NULL; primaryDvbApi=NULL;
   
   for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
@@ -53,6 +53,7 @@ bool cLcd::Connect( char *host, unsigned int port ) {
     return connected=false;
   }
 
+  ToggleMode=false;
   sock_send_string(sock, "hello\n"); 
   usleep(500000); // wait for a connect message  
   sock_recv(sock, istring, 1024);
@@ -65,7 +66,8 @@ bool cLcd::Connect( char *host, unsigned int port ) {
       , &wid, &hgt, &cellwid, &cellhgt) ) connected=true;
 
   if ((hgt < 4 ) || (wid < 16)) connected = false; // 4 lines are needed, may work with more than 4 though
-  if ( (hgt==2) && (wid>31) ) { connected = true; wid=wid/2; LineMode=0; }   // 2x40 
+  if ( (hgt==2) && (wid>31) ) { connected = true; wid=wid/2; LineMode=0; }   // 2x32-2x40 
+  else if ( (hgt==2) && (wid>15) && (wid<32) ) { connected = true; ToggleMode=true; }  // 2x16-2x31
   if (!connected) { cLcd::Close(); return connected; }
 
   sock_send_string(sock,"screen_add VDR\n"); sock_recv(sock, istring, 1024);
@@ -88,7 +90,17 @@ bool cLcd::Connect( char *host, unsigned int port ) {
 }
 
 void cLcd::Close() {
+  char istring[1024];
+  fprintf(stderr,"Close Called \n");
+  if (connected) {
+   closing = true;
+   sock_send_string(sock,"output off\n");
+   sock_recv(sock, istring, 1024);
+   sleep(1);
   sock_close(sock); 
+  }else{
+    fprintf(stderr,"Not Connected !!! \n");
+  }
   connected=false; sock=wid=hgt=cellwid=cellhgt=0; 
 }
 
@@ -236,15 +248,23 @@ if (!connected) return;
     cLcd::SetLine(Vol,2," ");
     cLcd::SetLine(Vol,3," ");
   } else {
-    if (hgt==2) { 
-      cLcd::SetLine(Vol,0,"|---|---|---|---|---|---|---|---|---|---");
-      cLcd::SetLine(Vol,3," ");
+    if (hgt==2) {
+      if (ToggleMode) {
+	cLcd::SetLine(Vol,0,"|---|---|---|---|---|---|---|---|---|---");
+        cLcd::SetLine(Vol,1," ");	
+      } else {	      
+        cLcd::SetLine(Vol,0,"|---|---|---|---|---|---|---|---|---|---");
+        cLcd::SetLine(Vol,3," ");
+        cLcd::SetLine(Vol,1,"|---|---|---|---|---|---|---|---|---|---");
+        cLcd::SetLine(Vol,2," ");
+      }
     } else {
       cLcd::SetLine(Vol,0,tr("Volume "));
       cLcd::SetLine(Vol,3,"|---|---|---|---|---|---|---|---|---|---");
+      cLcd::SetLine(Vol,1,"|---|---|---|---|---|---|---|---|---|---");
+      cLcd::SetLine(Vol,2," ");
     }  
-    cLcd::SetLine(Vol,1,"|---|---|---|---|---|---|---|---|---|---");
-    cLcd::SetLine(Vol,2," ");
+    
   }
 }
 
@@ -266,9 +286,9 @@ void cLcd::SetProgress(const char *begin, const char *end, int percent) {
       sprintf(workstring,"%s", begin);
       memset(workstring+beginw,' ',wid-beginw-endw);
       sprintf(workstring+wid-endw,"%s", end);
-      cLcd::SetLine(LCDREPLAY,3,workstring);
+      cLcd::SetLine(LCDREPLAY,(ToggleMode)?0:3,workstring);
       BeginMutualExclusion();
-        ThreadStateData.barx=beginw+1+((hgt==2)?wid:0); 
+        ThreadStateData.barx=beginw+1+((hgt==2 && !ToggleMode)?wid:0); 
         ThreadStateData.bary=((hgt==2)?1:4); 
         ThreadStateData.barl=(percent*cellwid*(wid-beginw-endw))/100;
       EndMutualExclusion();
@@ -336,7 +356,6 @@ void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, c
       ThreadStateData.lcdfullbuffer[LCDTITLE][i++]='*';
       ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' '; 
       ThreadStateData.lcdfullbuffer[LCDTITLE][i]='\0';  
-      ThreadStateData.newscroll=true;
     EndMutualExclusion();
     cLcd::SetBuffer(LCDMISC,ThreadStateData.lcdbuffer[LCDTITLE][2],ThreadStateData.lcdbuffer[LCDTITLE][3],NULL,NULL);
   }
@@ -456,11 +475,22 @@ void cLcd::Split(char *string, char *string1, char *string2) {
 
   unsigned int  i,j,k,ofs;
 
-  if ( (hgt>2 && strlen(string) < 2*wid) && strlen(string) > wid ) {  // beautification ..
+  if ( hgt>2 && ( strlen(string) < 2*wid) && isdigit(string[0]) && isdigit(string[1]) // beautification ..
+       && string[2]==':' && isdigit(string[3]) && isdigit(string[4]) ) {
+    char *tmpptr=strpbrk(string,"|");
+    if ( ( tmpptr != NULL ) && (ofs=tmpptr-string)<wid && wid-(ofs+1)<2*wid-(j=strlen(string))  ) {
+	 ofs=wid-(ofs+1);     
+	 string[j+ofs]='\0';
+	 for (i=j+ofs-1; i>=wid-ofs;i--) string[i]=string[i-ofs];
+	 for (i=wid-ofs-1;i<wid;i++) string[i]=' ';
+    }	      
+  }
+    
+  if ( hgt>2 && ( strlen(string) < 2*wid) && ( strlen(string) >= wid ) ) {  // beautification ..
 	  
     if (isalpha(string[wid-1]) && isalpha(string[wid])  ) {
       j=strlen(string);	    
-      for (i=wid-1; (i>0) && (string[i]!=' ') && (string[i]!='|') && (string[i]!=',')
+      for (i=wid-1; (i>0) && (string[i]!=' ') && (string[i]!='|') && (string[i]!=',') && (string[i]!=')')
 		          && (string[i]!='-') && (string[i]!='.') && (string[i]!=':') ; i-- ) {}
       
       if ( ( (2*wid-j) >= (ofs=wid-(i+1)) ) && ofs+j <= 2*wid   ) {
@@ -471,12 +501,14 @@ void cLcd::Split(char *string, char *string1, char *string2) {
      
     }
 
-    if ( (j=strlen(string)) < 2*wid && isdigit(string[0]) && isdigit(string[1]) && 
+    if ( (j=strlen(string)) < 2*wid && isdigit(string[0]) && isdigit(string[1]) &&  
 		     string[2]==':' && isdigit(string[3]) && isdigit(string[4])   ) {
       ofs=2*wid-strlen(string); ofs=(ofs>6)?6:ofs;
+      if (string[wid]=='|') string[wid]=' ';
+      if (ofs==6 && string[wid]==' ') ofs--;
       string[j+ofs]='\0';
       for (i=j+ofs-1; i>=wid+ofs;i--) string[i]=string[i-ofs];       
-      for (i=wid;i<wid+ofs;i++) string[i]=' '; 	    
+      for (i=wid;i<wid+ofs;i++) string[i]=' ';
     }
   }
 
@@ -493,7 +525,10 @@ void cLcd::Write(int line, const char *string) { // used for any text output to 
 
   char workstring[256];
   unsigned int i,out;
-  if (hgt > 2) {
+
+  if (ToggleMode && (line > 2)) return; 
+  
+  if (ToggleMode || hgt>2 ) {
     sprintf(workstring,"widget_set VDR line%d 1 %d \"",line,line);
   } else if (LineMode==0) {
     sprintf(workstring,"widget_set VDR line%d %d %d \"",line,(line==2||line==4)?wid+1:1,(line<3)?1:2 );	  
@@ -542,7 +577,7 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
 #define WakeUpCycle 125000 // us 
 
 void cLcd::Action(void) { // LCD output thread
-  unsigned int i,j, barx=1, bary=1, barl=0, ScrollState=0, ScrollLine=1; 
+  unsigned int i,j, barx=1, bary=1, barl=0, ScrollState=0, ScrollLine=1, lasttitlelen=0; 
   int Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight;
   struct timeval now, voltime;
   char workstring[256];
@@ -562,7 +597,30 @@ void cLcd::Action(void) { // LCD output thread
   cLcd::Write(2,"--------------------\0"); 
   cLcd::Write(3,"Video Disk Recorder\0"); 
   cLcd::Write(4,"Version: "VDRVERSION"\0"); 
-  sleep(5); bool volume=false; OutStateData.showvolume=false; ThreadStateData.showvolume=false;
+
+  // Output init
+  if (LcdSetup.OutputNumber > 0){
+    char lcdCommand[100];
+
+    for (int o=0; o <  LcdSetup.OutputNumber; o++){
+         sprintf(lcdCommand,"output %d\n",1 << o);
+         sock_send_string(sock,lcdCommand);
+         usleep(150000);
+    }
+    for (int o= LcdSetup.OutputNumber-1; o >= 0; o--){
+         sprintf(lcdCommand,"output %d\n",1 << o);
+         sock_send_string(sock,lcdCommand);
+         usleep(150000);
+    }
+    sprintf(lcdCommand,"output on\n");
+    sock_send_string(sock,lcdCommand);
+    usleep(500000);
+    sprintf(lcdCommand,"output off\n");
+    sock_send_string(sock,lcdCommand);
+  }
+
+
+  sleep(3); bool volume=false; OutStateData.showvolume=false; ThreadStateData.showvolume=false;
   
   if (primaryDvbApi) for (int k=0; k<primaryDvbApi->NumDevices() ; k++) SetCardStat(k,1); 
   
@@ -637,17 +695,31 @@ void cLcd::Action(void) { // LCD output thread
 	  ScrollState=LCDMENU;   ScrollLine=1;	
 	break;  	
 	case Title:
-	  ScrollState=LCDTITLE;  ScrollLine=2;	
+	  if (!ToggleMode) {
+	    ScrollState=LCDTITLE;  ScrollLine=2;
+	  } else {
+	    ScrollState=LCDTITLE;  ScrollLine=1;
+            char tmpbuffer[1024];
+	    strcpy(tmpbuffer,OutStateData.lcdbuffer[LCDTITLE][1]);
+	    strcat(tmpbuffer," * ");
+	    strcat(tmpbuffer, OutStateData.lcdfullbuffer[ScrollState]);
+            strcpy(OutStateData.lcdfullbuffer[ScrollState],tmpbuffer);
+            strncpy(OutStateData.lcdbuffer[LCDTITLE][1],OutStateData.lcdfullbuffer[ScrollState],wid);	    
+	  }
+          if ( strlen(OutStateData.lcdfullbuffer[ScrollState]) != lasttitlelen ) {
+	    lasttitlelen=strlen(OutStateData.lcdfullbuffer[ScrollState]);
+            scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false;	    
+          }		  
 	break;  	
         default:  
         break; 
       }
       
-      if ( ( strlen(OutStateData.lcdfullbuffer[ScrollState]) > (2*wid+3) ) 
+      if ( ( strlen(OutStateData.lcdfullbuffer[ScrollState]) > (((ToggleMode)?1:2)*wid+3) ) 
   	    && ( (scrollpos) || !(scrollwaitcnt=(scrollwaitcnt+1)%LcdSetup.Scrollwait) ) ) {
 	if ( !(scrollcnt=(scrollcnt+1)%LcdSetup.Scrollspeed)  ) {      
           scrollpos=(scrollpos+1)%strlen(OutStateData.lcdfullbuffer[ScrollState]);
-          if  ( scrollpos==1 ) scrollwaitcnt=1;
+          if  ( scrollpos==1 ) scrollwaitcnt=0;
           for (i=0; i<wid; i++) {
 	    OutStateData.lcdbuffer[ScrollState][ScrollLine][i]=
               OutStateData.lcdfullbuffer[ScrollState][(scrollpos+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
@@ -707,12 +779,12 @@ void cLcd::Action(void) { // LCD output thread
 
       case Replay: // Display date/time during replaying = 2
         LineMode=1;
-        if ( (now.tv_usec < WakeUpCycle) || (PrevState != Replay) ) { 
+        if ( !ToggleMode && ((now.tv_usec < WakeUpCycle) || (PrevState != Replay)) ) { 
           cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
           cLcd::Write(1,workstring);
         } 
         if (PrevState != Replay) { scrollpos=0; for (i=1;i<4;i++) Lcddirty[LCDREPLAY][i]=true; }
-        for (i=1;i<4;i++) if (Lcddirty[LCDREPLAY][i]) { 
+        for (i=(ToggleMode)?0:1;i<4;i++) if (Lcddirty[LCDREPLAY][i]) { 
           cLcd::Write(i+1,OutStateData.lcdbuffer[LCDREPLAY][i]); 
           Lcddirty[LCDREPLAY][i]=false; 
         }
@@ -770,6 +842,16 @@ void cLcd::Action(void) { // LCD output thread
 	sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
     }	    
     
+
+
+    if ( LcdMaxKeys && (lastAltShift != LcdSetup.AltShift) ) {
+      lastAltShift=LcdSetup.AltShift;
+      if (lastAltShift)
+	sock_send_string(sock,"screen_set VDR -heartbeat slash\n");
+      else
+	sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
+    }	
+
     workstring[0]='\0'; sock_recv(sock, workstring, 256);
     if ( LcdMaxKeys && ( strlen(workstring) > 4 ) ) {
       for (i=0; i < (strlen(workstring)-4); i++ ) {	    
@@ -797,6 +879,72 @@ void cLcd::Action(void) { // LCD output thread
       }
     }
     
+   // Output
+
+    int OutValue = 0;
+    char lcdCommand[100];
+    if (!closing){
+     if (LcdSetup.OutputNumber > 0){
+     	  for (int o=0; o <  LcdSetup.OutputNumber; o++){
+           switch(LcdSetup.OutputFunction[o]){
+             case 0: // Off
+               break;
+             case 1: // On
+               OutValue += 1 << o;
+               break;
+             case 2: // Recording DVB 1
+               if (OutStateData.CardStat[0] == 2)
+                 OutValue += 1 << o;
+               break;
+             case 3: // Recording DVB 2
+               if (OutStateData.CardStat[1] == 2)
+                 OutValue += 1 << o;
+               break;
+             case 4: // Recording DVB 3
+               if (OutStateData.CardStat[2] == 2)
+                 OutValue += 1 << o;
+               break;
+             case 5: // Recording DVB 4
+               if (OutStateData.CardStat[3] == 2)
+                 OutValue += 1 << o;
+               break;
+             case 6: // Replay
+               if (OutStateData.State == Replay)
+                 OutValue += 1 << o;
+               break;
+             case 7: // DVD
+               if ( (OutStateData.State == Replay) && (!strncmp(OutStateData.lcdfullbuffer[LCDREPLAY],"DVD", 3)))
+                 OutValue += 1 << o;
+               break;
+             case 8: // Mplayer
+               break;
+             case 9: // MP3
+	       if ( (OutStateData.State == Replay) && OutStateData.lcdfullbuffer[LCDREPLAY][0]=='[' &&
+	             OutStateData.lcdfullbuffer[LCDREPLAY][3]==']' && 
+		    (OutStateData.lcdfullbuffer[LCDREPLAY][1]=='.' || OutStateData.lcdfullbuffer[LCDREPLAY][1]=='L' ) &&
+		    (OutStateData.lcdfullbuffer[LCDREPLAY][2]=='.' || OutStateData.lcdfullbuffer[LCDREPLAY][2]=='S' )
+		   )
+		 OutValue += 1 << o;     
+               break;
+             case 10: // Mplayer + MP3
+                      // Until I find a better solution any replay that is not a DVD is flagged as Mplayer-Mp3
+               if ( (OutStateData.State == Replay) && (strncmp(OutStateData.lcdfullbuffer[LCDREPLAY],"DVD",3))!= 0)
+                 OutValue += 1 << o;
+               break;
+             case 11: // User1
+               break;
+             case 12: // User2
+               break;
+             case 13: // User3
+               break;
+             default:
+             ;
+           }
+         }
+         sprintf(lcdCommand,"output %d\n",OutValue);
+         sock_send_string(sock,lcdCommand);
+     }
+    }
     usleep(WakeUpCycle-(now.tv_usec%WakeUpCycle)); // sync to systemtime for nicer time output 
   }
 }

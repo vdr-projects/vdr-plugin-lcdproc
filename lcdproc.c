@@ -16,7 +16,7 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.6";
+static const char *VERSION        = "0.0.7";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = "LCDproc output";
 
@@ -29,6 +29,21 @@ bool group=false;
 char tempstringbuffer[80];
 char *LCDprocHOST=LCDHOST;
 unsigned int LCDprocPORT=LCDPORT;
+
+static const char * OutputFunctionText[]= {"Off",
+                                           "On",
+                                           "Recording DVB1",
+                                           "Recording DVB2",
+                                           "Recording DVB3",
+                                           "Recording DVB4",
+                                           "Replay",
+                                           "DVD",
+                                           "MPlayer",
+                                           "MP3",
+                                           "MPlayer + MP3",
+                                           "User1",
+                                           "User2",
+                                           "User3"};
 
 // ---
 
@@ -52,13 +67,15 @@ protected:
 void cLcdFeed::ChannelSwitch(const cDevice *Device, int ChannelNumber)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::ChannelSwitch  %d %d", Device->CardIndex(), ChannelNumber);
-  if (ChannelNumber) { 
-    LCDproc->SetLine(1,2," "); 
-    LCDproc->SetLine(1,3," ");
-    LCDproc->SetRunning(false,tr("Scanning for EPG info."), NULL); 
-    switched = true; 
-  } else switched = false;
-  if (Device) LCDproc->SetPrimaryDevice( (cDevice *) Device );
+  if ( Device && Device->IsPrimaryDevice() ) {
+    if (ChannelNumber) { 
+      LCDproc->SetLine(1,2," "); 
+      LCDproc->SetLine(1,3," ");
+      LCDproc->SetRunning(false,tr("Waiting for EPG info."), NULL); 
+      switched = true; 
+    } else switched = false;
+    LCDproc->SetPrimaryDevice( (cDevice *) Device );
+  }
 }
 
 void cLcdFeed::Recording(const cDevice *Device, const char *Name)
@@ -294,8 +311,32 @@ class cMenuSetupLcd : public cMenuSetupPage {
      cMenuSetupLcd(void);
 };
 
+// --- cMenuEditStraTrItem -----------------------------------------------------
+
+class cMenuEditStraTrItem : public cMenuEditIntItem {
+private:
+  const char * const *strings;
+protected:
+  virtual void Set(void);
+public:
+  cMenuEditStraTrItem(const char *Name, int *Value, int NumStrings, const char * const *Strings);
+  };
+
+cMenuEditStraTrItem::cMenuEditStraTrItem(const char *Name, int *Value, int NumStrings, const char * const *Strings)
+:cMenuEditIntItem(Name, Value, 0, NumStrings - 1)
+{
+  strings = Strings;
+  Set();
+}
+
+void cMenuEditStraTrItem::Set(void)
+{
+  SetValue(strings[*value]);
+}
+
 cMenuSetupLcd::cMenuSetupLcd(void)
 {
+  char str2[30];
   newLcdSetup=LcdSetup;	 
   Add(new cMenuEditIntItem( tr("FullCycle"),          &newLcdSetup.FullCycle,LcdSetup.TimeCycle,999));
   Add(new cMenuEditIntItem( tr("TimeDateCycle"),      &newLcdSetup.TimeCycle,0,LcdSetup.FullCycle));
@@ -305,10 +346,16 @@ cMenuSetupLcd::cMenuSetupLcd(void)
   Add(new cMenuEditIntItem( tr("Charmap"),            &newLcdSetup.Charmap,0,LCDMAXTRANSTBL-1 ));
   Add(new cMenuEditBoolItem( tr("AltShift"),          &newLcdSetup.AltShift));
   Add(new cMenuEditBoolItem( tr("BackLight"),         &newLcdSetup.BackLight));
+  Add(new cMenuEditIntItem( tr("OutputNumber"),         &newLcdSetup.OutputNumber));
+  for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
+    sprintf(str2,"OutputNumber %d",i);
+    Add(new cMenuEditStraTrItem( tr(str2), &newLcdSetup.OutputFunction[i],14, OutputFunctionText));
+  }
 }
 
 void cMenuSetupLcd::Store(void)
 {
+  char str2[30];
   SetupStore("FullCycle",   LcdSetup.FullCycle   = newLcdSetup.FullCycle);
   SetupStore("TimeCycle",   LcdSetup.TimeCycle   = newLcdSetup.TimeCycle);
   SetupStore("VolumeKeep",  LcdSetup.VolumeKeep  = newLcdSetup.VolumeKeep);
@@ -317,6 +364,11 @@ void cMenuSetupLcd::Store(void)
   SetupStore("Charmap",     LcdSetup.Charmap     = newLcdSetup.Charmap);
   SetupStore("AltShift",    LcdSetup.AltShift    = newLcdSetup.AltShift);
   SetupStore("BackLight",   LcdSetup.BackLight   = newLcdSetup.BackLight);
+  SetupStore("OutputNumber",   LcdSetup.OutputNumber   = newLcdSetup.OutputNumber);
+  for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
+    sprintf(str2,"OutputNumber %d",i);
+    SetupStore(str2,   LcdSetup.OutputFunction[i]   = newLcdSetup.OutputFunction[i]);
+  }
 }
 
 
@@ -337,6 +389,17 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "Charmap"))      LcdSetup.Charmap     = atoi(Value);
   else if (!strcasecmp(Name, "AltShift"))     LcdSetup.AltShift    = atoi(Value);
   else if (!strcasecmp(Name, "BackLight"))    LcdSetup.BackLight   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber")) LcdSetup.OutputNumber   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 0")) LcdSetup.OutputFunction[0]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 1")) LcdSetup.OutputFunction[1]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 2")) LcdSetup.OutputFunction[2]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 3")) LcdSetup.OutputFunction[3]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 4")) LcdSetup.OutputFunction[4]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 5")) LcdSetup.OutputFunction[5]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 6")) LcdSetup.OutputFunction[6]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 7")) LcdSetup.OutputFunction[7]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 8")) LcdSetup.OutputFunction[8]   = atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber 9")) LcdSetup.OutputFunction[9]   = atoi(Value);
   else
   return false;
   return true;

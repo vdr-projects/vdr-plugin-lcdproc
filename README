@@ -18,6 +18,7 @@ Current channel info and menus are then displayed on the LCD too.
 
 I had a 4x20 character display in mind but it should
 work with 4x16 up to 4x40 and 2x40.
+2x16+ displays should work too but are NOT fully supported.
 
 LCDd can be used in an xterm or console too, so it
 might be useful even without having the hardware. 
@@ -32,6 +33,42 @@ correctly, you can fix that by selecting a in the setup menu: (Charmap)
 2 ... CFontz        Thanks to Stephan Schreiber <stephan@sschreiber.de>
 
 lcdkeyconf.h is used to configure the plugin for a keypad.
+
+Mattia Rossi <mattia@technologist.com> added support for the output pins 
+that some Matrix Orbital displays have (lcdm001 and glk driver). 
+So the card status among other things can be indecated by led.
+
+
+Brief description of the setup menue:
+
+FullCycle / TimeDateCycle 
+  during recording the some displays toggle between time/date and card status
+  FullCycle (seconds) is the time for a complete cycle while
+  TimeDateCycle (seconds) is the duration where time/date is shown.
+
+VolumeKeep
+  ( 1/10 seconds ) how long the volume is shown on the display
+  
+Scrollwait
+  ( 1/8 seconds )  duration before scrolling is started
+
+Scrollspeed
+  ( 1/8 seconds )  higher value means slower scrolling
+
+Charmap
+  see above. 
+
+AltShift
+  when a keypad is used and a shiftkey is defined the type of shiftkey
+  indication ( done by LCDproc's 'heartbeat' ) can be changed.
+
+BackLight
+  backlight on/off 
+
+OutputNumber
+  implemented by Mattia Rossi <mattia@technologist.com> 
+  sets how many output pins should be used to indicate 
+  states like on/off, card status, ...
 
 
 LCDproc is available at http://lcdproc.omnipotent.net/

@@ -17,7 +17,7 @@ const tI18nPhrase Phrases[] = {
     "No EPG info available.",// TODO
     "No EPG info available.",// TODO
   },
-  { "Scanning for EPG info.",
+  { "Waiting for EPG info.",
     "Suche nach EPG Information.",
     "Scanning for EPG info.",// TODO
     "Scanning for EPG info.",// TODO
@@ -160,6 +160,22 @@ const tI18nPhrase Phrases[] = {
     "BackLight",// TODO
     "BackLight",// TODO
     "BackLight",// TODO
+  },
+{ "Output Number",
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
+    "Output Number",// TODO
   },
   { NULL }
   };

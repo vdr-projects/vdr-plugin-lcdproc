@@ -22,6 +22,7 @@ class cLcd : public cThread {
     enum ThreadStates {Menu=0, Title=1, Replay=2, Misc=3, Vol=4};
     ThreadStates LastState[LCDMAXSTATEBUF];
     int LastStateP,LineMode;
+    bool ToggleMode;
     struct StateData {
       char lcdbuffer[LCDMAXSTATES][4][LCDMAXWID+1];
       char lcdfullbuffer[LCDMAXSTATES][LCDMAXFULLSTRING];
@@ -73,6 +74,7 @@ class cLcd : public cThread {
     void Write(int line, const char *string);
     void GetTimeDateStat( char *string, unsigned int OutStateData[] );
     void Action(void);
+    int closing ;
 };
 
 #endif //__LCD_H

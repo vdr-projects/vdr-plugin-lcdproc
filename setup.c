@@ -12,4 +12,8 @@ cLcdSetup::cLcdSetup(void)
   Charmap     =  0;
   AltShift    =  0; 
   BackLight   =  1; 
+  OutputNumber   =  0;
+  for (int i = 0; i < LCDMAXOUTPUTS; i++)
+    OutputFunction[i] = 0;
 }
+

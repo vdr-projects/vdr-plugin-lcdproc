@@ -43,7 +43,7 @@ OBJS = $(PLUGIN).o lcd.o sockets.o i18n.o setup.o
 ### The C++ compiler and options:
 
 CXX      = g++
-CXXFLAGS = -g -O2 -Wall -Woverloaded-virtual -m486
+CXXFLAGS = -g -O2 -Wall -Woverloaded-virtual
 
 ### Implicit rules:
 
