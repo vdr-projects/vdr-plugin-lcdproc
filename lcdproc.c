@@ -13,7 +13,7 @@
 #include <vdr/recording.h>
 #include "lcd.h"
 
-static const char *VERSION        = "0.0.1";
+static const char *VERSION        = "0.0.2";
 static const char *MAINMENUENTRY  = NULL;
 #ifdef  LCD_hd44780
 static const char *DESCRIPTION    = "LCDproc using hd44780 output-mapping";

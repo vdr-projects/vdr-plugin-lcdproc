@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
@@ -70,6 +71,7 @@ bool cLcd::Connect( char *host, unsigned int port ) {
       , &wid, &hgt, &cellwid, &cellhgt) ) connected=true;
 
   if ((hgt < 4 ) || (wid < 16)) connected = false; // 4 lines are needed, may work with more than 4 though
+  if ( (hgt==2) && (wid>31) ) { connected = true; wid=wid/2; LineMode=0; }   // 2x40 
   if (!connected) { cLcd::Close(); return connected; }
 
   sock_send_string(sock,"screen_add VDR\n"); sock_recv(sock, istring, 1024);
@@ -230,10 +232,15 @@ if (!connected) return;
     cLcd::SetLine(Vol,2," ");
     cLcd::SetLine(Vol,3," ");
   } else {
-    cLcd::SetLine(Vol,0,tr("Volume "));
+    if (hgt==2) { 
+      cLcd::SetLine(Vol,0,"|---|---|---|---|---|---|---|---|---|---");
+      cLcd::SetLine(Vol,3," ");
+    } else {
+      cLcd::SetLine(Vol,0,tr("Volume "));
+      cLcd::SetLine(Vol,3,"|---|---|---|---|---|---|---|---|---|---");
+    }  
     cLcd::SetLine(Vol,1,"|---|---|---|---|---|---|---|---|---|---");
     cLcd::SetLine(Vol,2," ");
-    cLcd::SetLine(Vol,3,"|---|---|---|---|---|---|---|---|---|---");
   }
 }
 
@@ -257,8 +264,8 @@ void cLcd::SetProgress(const char *begin, const char *end, int percent) {
       sprintf(workstring+wid-endw,"%s", end);
       cLcd::SetLine(LCDREPLAY,3,workstring);
       BeginMutualExclusion();
-        ThreadStateData.barx=beginw+1; 
-        ThreadStateData.bary=4; 
+        ThreadStateData.barx=beginw+1+((hgt==2)?wid:0); 
+        ThreadStateData.bary=((hgt==2)?1:4); 
         ThreadStateData.barl=(percent*cellwid*(wid-beginw-endw))/100;
       EndMutualExclusion();
       LastProgress = t; 
@@ -443,8 +450,13 @@ void cLcd::Write(int line, const char *string) { // used for any text output to 
 
   char workstring[256];
   unsigned int i,out;
-
-  sprintf(workstring,"widget_set VDR line%d 1 %d \"",line,line);
+  if (hgt > 2) {
+    sprintf(workstring,"widget_set VDR line%d 1 %d \"",line,line);
+  } else if (LineMode==0) {
+    sprintf(workstring,"widget_set VDR line%d %d %d \"",line,(line==2||line==4)?wid+1:1,(line<3)?1:2 );	  
+  } else {
+    sprintf(workstring,"widget_set VDR line%d %d %d \"",line,(line==3||line==4)?wid+1:1,(line==1||line==4)?1:2);
+  }	  
   out=strlen(workstring);
   for (i=0;(i<strlen(string)) && (i<wid);i++)
     workstring[out++] = LcdTransTbl[ (unsigned char) string[i] ]; // char mapping see lcdtranstbl.h
@@ -574,8 +586,8 @@ void cLcd::Action(void) { // LCD output thread
         OutStateData.barx=1; OutStateData.bary=1; OutStateData.barl=0; volume=false;
       } else {
 	volume=true;      
-	OutStateData.barx=1; OutStateData.bary=3;
-	OutStateData.barl=(cellwid*wid*OutStateData.volume)/255;      
+	OutStateData.barx=1; OutStateData.bary=((hgt==2)?2:3);
+	OutStateData.barl=(cellwid*((hgt==2)?2:1)*wid*OutStateData.volume)/255;      
       }	      
     }	    
     if (volume) OutStateData.State = Vol;
@@ -584,6 +596,7 @@ void cLcd::Action(void) { // LCD output thread
     switch (OutStateData.State) {
 
       case Menu: // display menu = 0
+        LineMode=1;
         if (PrevState != Menu) for (i=0;i<4;i++) Lcddirty[LCDMENU][i]=true;
         for (i=0;i<4;i++) if (Lcddirty[LCDMENU][i]) {
           cLcd::Write(i+1,OutStateData.lcdbuffer[LCDMENU][i]);
@@ -593,6 +606,7 @@ void cLcd::Action(void) { // LCD output thread
       break;
 
       case Title: // Display 'titlescsreen' = 1
+        LineMode=0;
         if ( (now.tv_usec < WakeUpCycle) || (PrevState != Title) ) { 
           cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
           cLcd::Write(1,workstring);
@@ -606,6 +620,7 @@ void cLcd::Action(void) { // LCD output thread
       break;
 
       case Replay: // Display date/time during replaying = 2
+        LineMode=1;
         if ( (now.tv_usec < WakeUpCycle) || (PrevState != Replay) ) { 
           cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
           cLcd::Write(1,workstring);
@@ -619,6 +634,7 @@ void cLcd::Action(void) { // LCD output thread
       break;
 
       case Misc: // Display messages  = 3
+        LineMode=0;
         if (PrevState != Misc) for (i=0;i<4;i++) Lcddirty[LCDMISC][i]=true;
         for (i=0;i<4;i++) if (Lcddirty[LCDMISC][i]) {
           cLcd::Write(i+1,OutStateData.lcdbuffer[LCDMISC][i]);
@@ -628,6 +644,7 @@ void cLcd::Action(void) { // LCD output thread
       break;
 
       case Vol: // Display Volume = 4
+        LineMode=0;
         if (PrevState != Vol) for (i=0;i<4;i++) Lcddirty[LCDVOL][i]=true;
         for (i=0;i<4;i++) if (Lcddirty[LCDVOL][i]) {
           cLcd::Write(i+1,OutStateData.lcdbuffer[LCDVOL][i]);

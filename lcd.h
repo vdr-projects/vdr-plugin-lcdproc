@@ -19,7 +19,7 @@ class cLcd : public cThread {
     cDevice *primaryDvbApi;	  
     enum ThreadStates {Menu=0, Title=1, Replay=2, Misc=3, Vol=4};
     ThreadStates LastState[LCDMAXSTATEBUF];
-    int LastStateP;
+    int LastStateP,LineMode;
     struct StateData {
       char lcdbuffer[LCDMAXSTATES][4][LCDMAXWID+1];
       bool lcddirty[LCDMAXSTATES][4], muted, showvolume;
