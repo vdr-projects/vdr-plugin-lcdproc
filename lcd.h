@@ -57,6 +57,7 @@ class cLcd : public cThread {
     void PopThreadState();
     void SetReplayDevice(cControl *DvbApi);
     void SetPrimaryDevice(cDevice *DvbApi);
+    void ChannelSwitched(); //to propagate "ChannelSwitched"-Event from cLcdFeed to cLcd
   private:
     char *SummaryText;
     unsigned int SummaryTextL;
@@ -75,6 +76,24 @@ class cLcd : public cThread {
     void GetTimeDateStat( char *string, unsigned int OutStateData[] );
     void Action(void);
     int closing ;
+    bool channelSwitched;
+};
+
+// LcrData
+struct LcrService_v1_0 {
+  cString destination;
+  cString price;
+  cString pulse;
+};
+
+// Radiotext
+struct RadioTextService_v1_0 {
+  int rds_info;
+  int rds_pty;
+  char *rds_text;
+  char *rds_title;
+  char *rds_artist;
+  struct tm *title_start;
 };
 
 #endif //__LCD_H

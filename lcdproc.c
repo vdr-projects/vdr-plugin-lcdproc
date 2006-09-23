@@ -16,7 +16,7 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.10";
+static const char *VERSION        = "0.0.10-jw1";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = "LCDproc output";
 
@@ -51,8 +51,8 @@ static const char * PrioBackFunctionText[]= {"Off", "On", "Auto"};
 class cLcdFeed : public cStatus {
 protected:
   virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
-  virtual void Recording(const cDevice *Device, const char *Name);
-  virtual void Replaying(const cControl *DvbPlayerControl, const char *Name);
+  virtual void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
+  virtual void Replaying(const cControl *DvbPlayerControl, const char *Name, const char *FileName, bool On);
   virtual void SetVolume(int Volume, bool Absolute);
   virtual void OsdClear(void);
   virtual void OsdTitle(const char *Title);
@@ -73,26 +73,27 @@ void cLcdFeed::ChannelSwitch(const cDevice *Device, int ChannelNumber)
       LCDproc->SetLine(1,2," "); 
       LCDproc->SetLine(1,3," ");
       LCDproc->SetRunning(false,tr("Waiting for EPG info."), NULL); 
+      LCDproc->ChannelSwitched();
       switched = true; 
     } else switched = false;
     LCDproc->SetPrimaryDevice( (cDevice *) Device );
   }
 }
 
-void cLcdFeed::Recording(const cDevice *Device, const char *Name)
+void cLcdFeed::Recording(const cDevice *Device, const char *Name, const char *FileName, bool On)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::Recording  %d %s", Device->CardIndex(), Name);
-  if (Name)
+  if (On)
     LCDproc->SetCardStat(Device->CardIndex(),2);
   else
     LCDproc->SetCardStat(Device->CardIndex(),1);	  
 }
 
-void cLcdFeed::Replaying(const cControl *DvbPlayerControl, const char *Name)
+void cLcdFeed::Replaying(const cControl *DvbPlayerControl, const char *Name, const char *FileName, bool On)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::Replaying %s",  Name);
-  replaymode=(Name)?true:false;
-  if ( replaymode ) {
+  replaymode=On;
+  if (replaymode) {
     LCDproc->SetReplayDevice( (cDvbPlayerControl *) DvbPlayerControl);
     LCDproc->SetMain(2, Name);
     LCDproc->SetThreadState( (cLcd::ThreadStates) 2); // Replaying

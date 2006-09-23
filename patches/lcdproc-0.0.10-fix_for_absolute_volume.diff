@@ -1,0 +1,21 @@
+diff -rup lcdproc-0.0.10.sav/lcd.c lcdproc-0.0.10/lcd.c
+--- lcdproc-0.0.10.sav/lcd.c	Wed Aug 30 21:11:17 2006
++++ lcdproc-0.0.10/lcd.c	Sun Sep 17 12:48:23 2006
+@@ -258,11 +258,14 @@ void cLcd::SetWarning( const char *strin
+   }
+ }
+ 
+-void cLcd::ShowVolume(unsigned int vol, bool muted ) {
++void cLcd::ShowVolume(unsigned int vol, bool absolute ) {
+ if (!connected) return;
+   BeginMutualExclusion();
+-    ThreadStateData.volume=vol;
+-    ThreadStateData.muted=muted;
++    if (absolute)
++        ThreadStateData.volume=vol;
++      else
++        ThreadStateData.volume+=vol;
++    ThreadStateData.muted=(ThreadStateData.volume==0);
+     ThreadStateData.showvolume=true;
+   EndMutualExclusion();
+   if (ThreadStateData.muted) {

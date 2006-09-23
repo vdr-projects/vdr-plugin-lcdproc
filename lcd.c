@@ -11,6 +11,7 @@
 #include "lcd.h"
 #include "sockets.h"
 #include "i18n.h"
+#include <vdr/plugin.h>
 
 #ifdef LCD_EXT_KEY_CONF 
 #include LCD_EXT_KEY_CONF 
@@ -43,6 +44,7 @@ cLcd::cLcd() {
   for (i=0;i<LCDMAXSTATEBUF;i++) LastState[i]=Title; LastStateP=0;
   ThreadStateData.barx=1, ThreadStateData.bary=1, ThreadStateData.barl=0; 
   for (i=0;i<LCDMAXCARDS;i++) ThreadStateData.CardStat[i]=0;
+  channelSwitched = false;
 }
 
 cLcd::~cLcd() {
@@ -256,11 +258,14 @@ void cLcd::SetWarning( const char *string) {
   }
 }
 
-void cLcd::ShowVolume(unsigned int vol, bool muted ) {
+void cLcd::ShowVolume(unsigned int vol, bool absolute ) {
 if (!connected) return;
   BeginMutualExclusion();
-    ThreadStateData.volume=vol;
-    ThreadStateData.muted=muted;
+    if (absolute)
+        ThreadStateData.volume=vol;
+      else
+        ThreadStateData.volume+=vol;
+    ThreadStateData.muted=(ThreadStateData.volume==0);
     ThreadStateData.showvolume=true;
   EndMutualExclusion();
   if (ThreadStateData.muted) {
@@ -586,7 +591,7 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
   if ( offset || !( ShowStates && ((t%LcdSetup.FullCycle) >= LcdSetup.TimeCycle) )) {  
     if (wid > 19) 
       snprintf(string,wid+1,"<%s %02d.%02d %02d:%02d:%02d>",
-        WeekDayName(now->tm_wday), now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
+        *WeekDayName(now->tm_wday), now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
     else
       snprintf(string,wid+1,"<%02d.%02d %02d:%02d:%02d>",
         now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
@@ -613,6 +618,11 @@ void cLcd::Action(void) { // LCD output thread
   bool Lcddirty[LCDMAXSTATES][4];
   bool LcdShiftkeyPressed=false;
   char priostring[35];
+  // RT
+  static int rtcycle;
+  
+  // LCR
+  static int lcrCycle;
   
   // backlight init 
   if ((lastBackLight=LcdSetup.BackLight))
@@ -664,12 +674,15 @@ void cLcd::Action(void) { // LCD output thread
   
   voltime.tv_sec=0;
   for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) Lcddirty[i][j]=true;
-  time_t nextLcdUpdate = (time(NULL)/60)*60+60;
-
+  time_t nextLcdUpdate = 0; // trigger first update immediately
   while (true) { // main loop, wakes up every WakeUpCycle, any output to LCDd is done here  
     gettimeofday(&now,NULL);
 
     //  epg update
+  if (channelSwitched) {
+    channelSwitched = false;
+    nextLcdUpdate = 0; //trigger next epg update
+  }
 
 #ifdef OLDVDR
 
@@ -693,11 +706,11 @@ void cLcd::Action(void) { // LCD output thread
                SetRunning(false,tr("No EPG info available."), NULL);
             if ((Present = Schedule->GetFollowingEvent()) != NULL)
               nextLcdUpdate=(Present->GetTime()<nextLcdUpdate)?Present->GetTime():nextLcdUpdate;
+            rtcycle = 10; // RT
+	    lcrCycle = 10; // LCR
          }
       }
      if ( nextLcdUpdate <= time(NULL) )
-         nextLcdUpdate=(time(NULL)/60)*60+60;
-      else if ( nextLcdUpdate > time(NULL)+60 )
          nextLcdUpdate=(time(NULL)/60)*60+60;
     }
 
@@ -724,14 +737,56 @@ void cLcd::Action(void) { // LCD output thread
                SetRunning(false,tr("No EPG info available."), NULL); 
             if ((Present = Schedule->GetFollowingEvent()) != NULL)
               nextLcdUpdate=(Present->StartTime()<nextLcdUpdate)?Present->StartTime():nextLcdUpdate;
+            rtcycle = 10; // RT
+	    lcrCycle = 10; // LCR
          }
       }
      if ( nextLcdUpdate <= time(NULL) )
          nextLcdUpdate=(time(NULL)/60)*60+60;
-      else if ( nextLcdUpdate > time(NULL)+60 )
-         nextLcdUpdate=(time(NULL)/60)*60+60;
     }  
 
+#endif
+
+#if VDRVERSNUM >= 10330
+    // get&display Radiotext
+    if (++rtcycle > 10) {	// every 10 times
+        cPlugin *p;
+	p = cPluginManager::CallFirstService("RadioTextService-v1.0", NULL);
+	if (p) {
+	    RadioTextService_v1_0 rtext;
+    	    if (cPluginManager::CallFirstService("RadioTextService-v1.0", &rtext)) {
+    		if (rtext.rds_info == 2 && strstr(rtext.rds_title, "---") == NULL) {
+		    char timestr[20];
+    		    sprintf(timestr, "%02d:%02d", rtext.title_start->tm_hour, rtext.title_start->tm_min);
+        	    SetRunning(false, timestr, rtext.rds_title, rtext.rds_artist);
+		    }
+		else if (rtext.rds_info > 0) {
+        	    SetRunning(false, NULL, rtext.rds_text);
+		    }
+		}
+	    }
+	rtcycle = 0;
+	//printf("lcdproc - get Radiotext ...\n");
+     }
+     // get&display LcrData
+     if (lcrCycle++ == 10) // every 10 times
+     {
+         lcrCycle = 0;
+         cPlugin *p;
+         p = cPluginManager::CallFirstService("LcrService-v1.0", NULL);
+         if (p)
+         {
+             LcrService_v1_0 lcrData;
+             if (cPluginManager::CallFirstService("LcrService-v1.0", &lcrData))
+             {
+                 if ( strstr( lcrData.destination, "---" ) == NULL )
+                 {
+                   SetRunning(false, (const char *)lcrData.destination, (const char *)lcrData.price, (const char         *)lcrData.pulse);
+                   nextLcdUpdate = 0; //trigger next epg update
+                 }
+             }
+         }
+     }
 #endif
 
     // replaying
@@ -1020,4 +1075,8 @@ void cLcd::Action(void) { // LCD output thread
     }
     usleep(WakeUpCycle-(now.tv_usec%WakeUpCycle)); // sync to systemtime for nicer time output 
   }
+}
+
+void cLcd::ChannelSwitched() {
+    channelSwitched = true;
 }

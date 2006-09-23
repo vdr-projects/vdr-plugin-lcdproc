@@ -1,6 +1,15 @@
 VDR Plugin 'lcdproc' Revision History
 ------------------------------------
 
+2006-09-24: Version 0.0.10-jw1
+- speedup in EPG handling
+- adapted to VDR 1.4.2
+- implemented service interface for lcr plugin (using patch provided by the plugin)
+- implemented service interface for radio plugin (displaying radio text info)
+- fixed the handling of cStatus::SetVolume information
+
+[...]
+
 2002-05-20: Version 0.0.1
 
 - Initial revision.

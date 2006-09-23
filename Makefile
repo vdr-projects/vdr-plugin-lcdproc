@@ -31,7 +31,7 @@ TMPDIR = /tmp
 
 ### The version number of VDR (taken from VDR's "config.h"):
 
-VDRVERSION = $(shell grep 'define VDRVERSION ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
+APIVERSION = $(shell grep 'define APIVERSION ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
 
 ### The name of the distribution archive:
 
@@ -44,7 +44,7 @@ INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include
 
 DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
-ifeq ($(shell echo $(VDRVERSION)|sed -e 's/\([0-9]\.[0-9]\)\..*/\1/' ),1.2)
+ifeq ($(shell echo $(APIVERSION)|sed -e 's/\([0-9]\.[0-9]\)\..*/\1/' ),1.2)
   DEFINES += -DOLDVDR
 endif
 
@@ -78,7 +78,7 @@ all: libvdr-$(PLUGIN).so
 
 libvdr-$(PLUGIN).so: $(OBJS)
 	$(CXX) $(CXXFLAGS) -shared $(OBJS) -o $@
-	@cp $@ $(LIBDIR)/$@.$(VDRVERSION)
+	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
 
 dist: clean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
