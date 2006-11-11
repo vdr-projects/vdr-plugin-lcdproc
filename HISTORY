@@ -1,6 +1,12 @@
 VDR Plugin 'lcdproc' Revision History
 ------------------------------------
 
+2006-11-12: Version 0.0.10-jw2
+- added new simple recording status (can be configured via the setup)
+- added german translations
+- removed unused PrioWait parameter (can somebody tell me, what this should wait for?)
+- fixed some typos in the readme file
+
 2006-09-24: Version 0.0.10-jw1
 - speedup in EPG handling
 - adapted to VDR 1.4.2

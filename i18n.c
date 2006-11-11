@@ -36,7 +36,7 @@ const tI18nPhrase Phrases[] = {
     "Scanning for EPG info.",// TODO
   },
   { "FullCycle",
-    "FullCycle",// TODO
+    "Zyklusdauer Statuszeile",// TODO
     "FullCycle",// TODO
     "FullCycle",// TODO
     "FullCycle",// TODO
@@ -53,7 +53,7 @@ const tI18nPhrase Phrases[] = {
     "FullCycle",// TODO
   },
   { "TimeDateCycle",
-    "TimeDateCycle",// TODO
+    "davon Dauer Zeitanzeige",// TODO
     "TimeDateCycle",// TODO
     "TimeDateCycle",// TODO
     "TimeDateCycle",// TODO
@@ -70,7 +70,7 @@ const tI18nPhrase Phrases[] = {
     "TimeDateCycle",// TODO
   },
   { "VolumeKeep",
-    "VolumeKeep",// TODO
+    "Anzeigedauer Lautstärke",// TODO
     "VolumeKeep",// TODO
     "VolumeKeep",// TODO
     "VolumeKeep",// TODO
@@ -87,7 +87,7 @@ const tI18nPhrase Phrases[] = {
     "VolumeKeep",// TODO
   },
   { "Scrollwait",
-    "Scrollwait",// TODO
+    "Zeit bis Text rollen",// TODO
     "Scrollwait",// TODO
     "Scrollwait",// TODO
     "Scrollwait",// TODO
@@ -104,7 +104,7 @@ const tI18nPhrase Phrases[] = {
     "Scrollwait",// TODO
   },
   { "Scrollspeed",
-    "Scrollspeed",// TODO
+    "Rollgeschwindigkeit",// TODO
     "Scrollspeed",// TODO
     "Scrollspeed",// TODO
     "Scrollspeed",// TODO
@@ -121,7 +121,7 @@ const tI18nPhrase Phrases[] = {
     "Scrollspeed",// TODO
   },
   { "Charmap",
-    "Charmap",// TODO
+    "Zeichenkodierung",// TODO
     "Charmap",// TODO
     "Charmap",// TODO
     "Charmap",// TODO
@@ -138,7 +138,7 @@ const tI18nPhrase Phrases[] = {
     "Charmap",// TODO
   },
   { "AltShift",
-    "AltShift",// TODO
+    "Alternative \"Heartbeat\"-Signalisierung",// TODO
     "AltShift",// TODO
     "AltShift",// TODO
     "AltShift",// TODO
@@ -155,7 +155,7 @@ const tI18nPhrase Phrases[] = {
     "AltShift",// TODO
   },
   { "BackLight",
-    "BackLight",// TODO
+    "Hintergrundbeleuchtung",// TODO
     "BackLight",// TODO
     "BackLight",// TODO
     "BackLight",// TODO
@@ -172,6 +172,7 @@ const tI18nPhrase Phrases[] = {
     "BackLight",// TODO
   },
   { "OutputNumber",
+    "Zahl der Ausgänge am LCD",// TODO
     "OutputNumber",// TODO
     "OutputNumber",// TODO
     "OutputNumber",// TODO
@@ -186,7 +187,186 @@ const tI18nPhrase Phrases[] = {
     "OutputNumber",// TODO
     "OutputNumber",// TODO
     "OutputNumber",// TODO
-    "OutputNumber",// TODO
+  },
+  {
+    "RECORDING", // this string has to be exactly 9 characters long for proper display layout
+    "AUFNAHME ",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",
+    "RECORDING",    
+  },
+  {
+    "Recording status",
+    "Aufnahmestatus",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+    "Recording status",
+  },
+  {
+    "simple",
+    "einfach",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+    "simple",
+  },
+  {
+    "detailed",
+    "ausführlich",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+    "detailed",
+  },
+  {
+    "off",
+    "aus",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+    "off",
+  },
+  {
+    "on",
+    "an",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+    "on",
+  },
+  {
+    "SetClientPriority",
+    "Anzeigepriorität auf Normal setzen",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+    "SetClientPriority",
+  },
+  {
+    "NormalClientPriority",
+    "Normale Anzeigeprorität",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+    "NormalClientPriority",
+  },
+  {
+    "HighClientPriority",
+    "Hohe Anzeigepriorität",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+    "HighClientPriority",
+  },
+  {
+    "BackLightWait",
+    "Dauer Hintergrundbeleuchtung",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",
+    "BackLightWait",    
   },
   { NULL }
   };

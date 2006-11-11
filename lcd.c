@@ -598,9 +598,14 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
   }
 
   if ( offset || ( ShowStates && ((t%LcdSetup.FullCycle) >= LcdSetup.TimeCycle) )) {
-    for (i=0; i<LCDMAXCARDS; i++) {
-      snprintf(string+offset,5," %d:%c", i,States[ OutStateData[i] ] );
-      offset+=4;
+    if (LcdSetup.RecordingStatus == 0) {
+      for (i=0; i<LCDMAXCARDS; i++) {
+       snprintf(string+offset,5," %d:%c", i,States[ OutStateData[i] ] );
+       offset+=4;  
+      }
+    }
+    else {
+      snprintf(string,wid+1,"<%s %02d:%02d:%02d>", tr("RECORDING"), now->tm_hour, now->tm_min,now->tm_sec);
     }
   }
 

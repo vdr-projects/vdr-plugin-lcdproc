@@ -16,9 +16,9 @@ cLcdSetup::cLcdSetup(void)
   ClientPrioH =  16; 
   SetPrio     =   0; 
   BackLightWait = 0; 
-  PrioWait    =   0; 
   OutputNumber   =  0;
   for (int i = 0; i < LCDMAXOUTPUTS; i++)
     OutputFunction[i] = 0;
+  RecordingStatus = 0;
 }
 

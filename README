@@ -46,7 +46,7 @@ So the card status among other things can be indecated by led.
 Brief description of the setup menue:
 
 FullCycle / TimeDateCycle 
-  during recording the some displays toggle between time/date and card status
+  during recording the same display toggles between time/date and card status
   FullCycle (seconds) is the time for a complete cycle while
   TimeDateCycle (seconds) is the duration where time/date is shown.
 
@@ -73,6 +73,10 @@ OutputNumber
   implemented by Mattia Rossi <mattia@technologist.com> 
   sets how many output pins should be used to indicate 
   states like on/off, card status, ...
+  
+RecordingStatus
+  configures whether the recording status is displayed "detailed" 
+  (for every dvb card) or only "simple".
 
 
 LCDproc is available at http://lcdproc.omnipotent.net/

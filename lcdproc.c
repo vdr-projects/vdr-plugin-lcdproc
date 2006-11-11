@@ -16,7 +16,7 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.10-jw1";
+static const char *VERSION        = "0.0.10-jw2";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = "LCDproc output";
 
@@ -44,9 +44,6 @@ static const char * OutputFunctionText[]= {"Off",
                                            "User1",
                                            "User2",
                                            "User3"};
-
-
-static const char * PrioBackFunctionText[]= {"Off", "On", "Auto"};
 
 class cLcdFeed : public cStatus {
 protected:
@@ -305,15 +302,6 @@ cOsdMenu *cPluginLcd::MainMenuAction(void)
   return NULL;
 }
 
-class cMenuSetupLcd : public cMenuSetupPage {
-  private:
-     cLcdSetup newLcdSetup;	  
-  protected:
-     virtual void Store(void);
-  public:
-     cMenuSetupLcd(void);
-};
-
 // --- cMenuEditStraTrItem -----------------------------------------------------
 
 class cMenuEditStraTrItem : public cMenuEditIntItem {
@@ -337,8 +325,26 @@ void cMenuEditStraTrItem::Set(void)
   SetValue(strings[*value]);
 }
 
+// --- cMenuSetupLcd -----------------------------------------------------------
+
+class cMenuSetupLcd : public cMenuSetupPage {
+  private:
+    cLcdSetup newLcdSetup;    
+    const char * RecordingStatusText[2];
+    const char * PrioBackFunctionText[3];
+  protected:
+     virtual void Store(void);
+  public:
+     cMenuSetupLcd(void);
+};
+
 cMenuSetupLcd::cMenuSetupLcd(void)
 {
+  PrioBackFunctionText[0] = tr("off");
+  PrioBackFunctionText[1] = tr("on");
+  PrioBackFunctionText[2] = tr("auto");
+  RecordingStatusText[0] = tr("detailed");
+  RecordingStatusText[1] = tr("simple");
   char str2[30];
   newLcdSetup=LcdSetup;	 
   Add(new cMenuEditIntItem( tr("FullCycle"),           &newLcdSetup.FullCycle,1,999));
@@ -353,12 +359,12 @@ cMenuSetupLcd::cMenuSetupLcd(void)
   Add(new cMenuEditIntItem( tr("NormalClientPriority"),&newLcdSetup.ClientPrioN,0,255));
   Add(new cMenuEditIntItem( tr("HighClientPriority"),  &newLcdSetup.ClientPrioH,0,255));
   Add(new cMenuEditIntItem( tr("BackLightWait"),       &newLcdSetup.BackLightWait,1,99));
-  Add(new cMenuEditIntItem( tr("PrioWait"),            &newLcdSetup.PrioWait,1,99));
   Add(new cMenuEditIntItem( tr("OutputNumber"),        &newLcdSetup.OutputNumber));
   for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
     sprintf(str2,"%s %d",tr("OutputNumber"),i);
     Add(new cMenuEditStraTrItem( str2, &newLcdSetup.OutputFunction[i],14, OutputFunctionText));
   }
+  Add(new cMenuEditStraItem( tr("Recording status"),   &newLcdSetup.RecordingStatus, 2, RecordingStatusText));
 }
 
 void cMenuSetupLcd::Store(void)
@@ -376,12 +382,12 @@ void cMenuSetupLcd::Store(void)
   SetupStore("ClientPrioN", LcdSetup.ClientPrioN = newLcdSetup.ClientPrioN);
   SetupStore("ClientPrioH", LcdSetup.ClientPrioH = newLcdSetup.ClientPrioH);
   SetupStore("BackLightWait", LcdSetup.ClientPrioH = newLcdSetup.BackLightWait);
-  SetupStore("PrioWait",    LcdSetup.ClientPrioH = newLcdSetup.PrioWait);
   SetupStore("OutputNumber",LcdSetup.OutputNumber   = newLcdSetup.OutputNumber);
   for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
     sprintf(str2,"OutputNumber %d",i);
     SetupStore(str2,   LcdSetup.OutputFunction[i]   = newLcdSetup.OutputFunction[i]);
   }
+  SetupStore("RecordingStatus", LcdSetup.RecordingStatus = newLcdSetup.RecordingStatus);  
 }
 
 
@@ -406,7 +412,6 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "ClientPrioN"))  LcdSetup.ClientPrioN = atoi(Value);
   else if (!strcasecmp(Name, "ClientPrioH"))  LcdSetup.ClientPrioH = atoi(Value);
   else if (!strcasecmp(Name, "BackLightWait"))  LcdSetup.BackLightWait = atoi(Value);
-  else if (!strcasecmp(Name, "PrioWait"))     LcdSetup.PrioWait = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber")) LcdSetup.OutputNumber= atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 0")) LcdSetup.OutputFunction[0]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 1")) LcdSetup.OutputFunction[1]   = atoi(Value);
@@ -418,6 +423,7 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OutputNumber 7")) LcdSetup.OutputFunction[7]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 8")) LcdSetup.OutputFunction[8]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 9")) LcdSetup.OutputFunction[9]   = atoi(Value);
+  else if (!strcasecmp(Name, "RecordingStatus")) LcdSetup.RecordingStatus   = atoi(Value);
   else
   return false;
   return true;

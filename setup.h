@@ -17,9 +17,9 @@ public:
   int ClientPrioN;
   int ClientPrioH;
   int BackLightWait;
-  int PrioWait;  
   int OutputNumber;
   int OutputFunction[LCDMAXOUTPUTS];
+  int RecordingStatus;
 public:
   cLcdSetup(void);
   };
