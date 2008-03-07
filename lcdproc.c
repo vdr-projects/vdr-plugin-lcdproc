@@ -16,7 +16,7 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.10-jw2";
+static const char *VERSION        = "0.0.10-jw3";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = "LCDproc output";
 
@@ -97,7 +97,7 @@ void cLcdFeed::Replaying(const cControl *DvbPlayerControl, const char *Name, con
   } else {
     LCDproc->SetReplayDevice(NULL); 
     LCDproc->SetProgress(NULL);
-    LCDproc->SetLineC(1,1,tempstringbuffer); 
+    LCDproc->SetLineC(1,LcdSetup.ShowTime?1:0,tempstringbuffer); 
     LCDproc->SetThreadState( (cLcd::ThreadStates) 1); // Title
   }
   menumode=false; 
@@ -118,7 +118,7 @@ void cLcdFeed::OsdClear(void)
   else 
     LCDproc->SetThreadState( (cLcd::ThreadStates) 1); // Title
   menumode=false;
-  if (group) {LCDproc->SetLineC(1,1,tempstringbuffer); group=false; } 
+  if (group) {LCDproc->SetLineC(1,LcdSetup.ShowTime?1:0,tempstringbuffer); group=false; } 
 }
 
 void cLcdFeed::OsdTitle(const char *Title)
@@ -170,7 +170,7 @@ void cLcdFeed::OsdTextItem(const char *Text, bool Scroll)
 void cLcdFeed::OsdChannel(const char *Text)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdChannel %s", Text);
-  LCDproc->SetLineC(1,1,Text);
+  LCDproc->SetLineC(1,LcdSetup.ShowTime?1:0,Text);
 
   bool switching = group = !isdigit(Text[0]);
   if (!group) strcpy(tempstringbuffer,Text); 
@@ -282,7 +282,9 @@ bool cPluginLcd::ProcessArgs(int argc, char *argv[])
 bool cPluginLcd::Start(void)
 {
   // Start any background activities the plugin shall perform.
+#if VDRVERSNUM < 10507  
   RegisterI18n(Phrases);
+#endif
   lcdFeed = new cLcdFeed;
   if ( LCDproc->Connect(LCDprocHOST,LCDprocPORT) ) {
     syslog(LOG_INFO, "connection to LCDd at %s:%d established.",LCDprocHOST,LCDprocPORT);
@@ -365,6 +367,7 @@ cMenuSetupLcd::cMenuSetupLcd(void)
     Add(new cMenuEditStraTrItem( str2, &newLcdSetup.OutputFunction[i],14, OutputFunctionText));
   }
   Add(new cMenuEditStraItem( tr("Recording status"),   &newLcdSetup.RecordingStatus, 2, RecordingStatusText));
+  Add(new cMenuEditBoolItem( tr("Show time"),          &newLcdSetup.ShowTime));
 }
 
 void cMenuSetupLcd::Store(void)
@@ -388,6 +391,7 @@ void cMenuSetupLcd::Store(void)
     SetupStore(str2,   LcdSetup.OutputFunction[i]   = newLcdSetup.OutputFunction[i]);
   }
   SetupStore("RecordingStatus", LcdSetup.RecordingStatus = newLcdSetup.RecordingStatus);  
+  SetupStore("ShowTime", LcdSetup.ShowTime = newLcdSetup.ShowTime);
 }
 
 
@@ -424,6 +428,7 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OutputNumber 8")) LcdSetup.OutputFunction[8]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 9")) LcdSetup.OutputFunction[9]   = atoi(Value);
   else if (!strcasecmp(Name, "RecordingStatus")) LcdSetup.RecordingStatus   = atoi(Value);
+  else if (!strcasecmp(Name, "ShowTime")) LcdSetup.ShowTime = atoi(Value);
   else
   return false;
   return true;

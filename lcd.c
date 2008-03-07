@@ -646,10 +646,10 @@ void cLcd::Action(void) { // LCD output thread
   lastPrioN=LcdSetup.ClientPrioN;
       
   syslog(LOG_INFO, "LCD output thread started (pid=%d), display size: %dx%d", getpid(),hgt,wid);
-  cLcd::Write(1," Welcome  to  V D R\0"); 
-  cLcd::Write(2,"--------------------\0"); 
-  cLcd::Write(3,"Video Disk Recorder\0"); 
-  cLcd::Write(4,"Version: "VDRVERSION"\0"); 
+  cLcd::Write(LcdSetup.ShowTime?1:4," Welcome  to  V D R\0"); 
+  cLcd::Write(LcdSetup.ShowTime?2:3,"--------------------\0");
+  cLcd::Write(LcdSetup.ShowTime?3:1,"Video Disk Recorder\0");
+  cLcd::Write(LcdSetup.ShowTime?4:2,"Version: "VDRVERSION"\0");
 
   // Output init
   if (LcdSetup.OutputNumber > 0){
@@ -828,19 +828,22 @@ void cLcd::Action(void) { // LCD output thread
 	  ScrollState=LCDMENU;   ScrollLine=1;	
 	break;  	
 	case Title:
+	  ScrollState=LCDTITLE;
 	  if (!ToggleMode) {
-	    ScrollState=LCDTITLE;  ScrollLine=2;
+	    ScrollLine=2;
 	  } else {
-	    ScrollState=LCDTITLE;  ScrollLine=1;
-            char tmpbuffer[1024];
-	    strcpy(tmpbuffer,OutStateData.lcdbuffer[LCDTITLE][1]);
-	    strcat(tmpbuffer," * ");
-	    strcat(tmpbuffer, OutStateData.lcdfullbuffer[ScrollState]);
-            strcpy(OutStateData.lcdfullbuffer[ScrollState],tmpbuffer);
-            strncpy(OutStateData.lcdbuffer[LCDTITLE][1],OutStateData.lcdfullbuffer[ScrollState],wid);	    
+	    ScrollLine=1;
+	    if (LcdSetup.ShowTime) {
+	      char tmpbuffer[1024];
+	      strcpy(tmpbuffer,OutStateData.lcdbuffer[LCDTITLE][1]);
+	      strcat(tmpbuffer," * ");
+	      strcat(tmpbuffer, OutStateData.lcdfullbuffer[LCDTITLE]);
+	      strcpy(OutStateData.lcdfullbuffer[LCDTITLE],tmpbuffer);
+            }
+            strncpy(OutStateData.lcdbuffer[LCDTITLE][1],OutStateData.lcdfullbuffer[LCDTITLE],wid);
 	  }
-          if ( strlen(OutStateData.lcdfullbuffer[ScrollState]) != lasttitlelen ) {
-	    lasttitlelen=strlen(OutStateData.lcdfullbuffer[ScrollState]);
+          if ( strlen(OutStateData.lcdfullbuffer[LCDTITLE]) != lasttitlelen ) {
+	    lasttitlelen=strlen(OutStateData.lcdfullbuffer[LCDTITLE]);
             scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false;	    
           }		  
 	break;  	
@@ -865,7 +868,7 @@ void cLcd::Action(void) { // LCD output thread
           OutStateData.lcdbuffer[ScrollState][ScrollLine+1][wid]='\0';
           Lcddirty[ScrollState][ScrollLine]=Lcddirty[ScrollState][ScrollLine+1]=true; 
 	}
-      }	    
+      } else if (!LcdSetup.ShowTime) Lcddirty[LCDTITLE][1]=true;
     }
 
     // volume  
@@ -902,12 +905,12 @@ void cLcd::Action(void) { // LCD output thread
 
       case Title: // Display 'titlescsreen' = 1
         LineMode=0;
-        if ( (now.tv_usec < WakeUpCycle) || (PrevState != Title) ) { 
+	if ( (LcdSetup.ShowTime) && ( (now.tv_usec < WakeUpCycle) || (PrevState != Title) ) ) { 
           cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
           cLcd::Write(1,workstring);
-        } 
-        if (PrevState != Title) for (i=1;i<4;i++) Lcddirty[LCDTITLE][i]=true;
-        for (i=1;i<4;i++) if (Lcddirty[LCDTITLE][i]) { 
+        }
+        if (PrevState != Title) for (i=LcdSetup.ShowTime?1:0;i<4;i++) Lcddirty[LCDTITLE][i]=true;
+        for (i=LcdSetup.ShowTime?1:0;i<4;i++) if (Lcddirty[LCDTITLE][i]) { 
           cLcd::Write(i+1,OutStateData.lcdbuffer[LCDTITLE][i]); 
           Lcddirty[LCDTITLE][i]=false; 
         }

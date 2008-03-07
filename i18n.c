@@ -368,5 +368,23 @@ const tI18nPhrase Phrases[] = {
     "BackLightWait",
     "BackLightWait",    
   },
+  {
+    "Show time",
+    "Zeit anzeigen",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+    "Show time",
+  },  
   { NULL }
   };

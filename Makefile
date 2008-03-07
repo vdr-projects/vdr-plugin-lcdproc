@@ -32,6 +32,13 @@ TMPDIR = /tmp
 ### The version number of VDR (taken from VDR's "config.h"):
 
 APIVERSION = $(shell grep 'define APIVERSION ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
+VDRVERSNUM = $(shell grep 'define VDRVERSNUM ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
+USE_GETTEXT= $(shell test $(VDRVERSNUM) -ge 10507 && echo yes)
+USE_GETTEXT_V2= $(shell test $(VDRVERSNUM) -ge 10508 && echo yes)
+
+ifeq ($(USE_GETTEXT_V2),yes)
+I18N_PREFIX = vdr-
+endif
 
 ### The name of the distribution archive:
 
@@ -56,25 +63,21 @@ endif
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o lcd.o sockets.o i18n.o setup.o
+OBJS = $(PLUGIN).o lcd.o sockets.o setup.o
 
-### Implicit rules:
+ifneq ($(USE_GETTEXT),yes)
+OBJS += i18n.o
+endif
+
+### Targets:
+ifeq ($(USE_GETTEXT),yes)
+all: libvdr-$(PLUGIN).so i18n
+else
+all: libvdr-$(PLUGIN).so
+endif
 
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
-
-# Dependencies:
-
-MAKEDEP = g++ -MM -MG
-DEPFILE = .dependencies
-$(DEPFILE): Makefile
-	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) > $@
-
--include $(DEPFILE)
-
-### Targets:
-
-all: libvdr-$(PLUGIN).so
 
 libvdr-$(PLUGIN).so: $(OBJS)
 	$(CXX) $(CXXFLAGS) -shared $(OBJS) -o $@
@@ -89,4 +92,40 @@ dist: clean
 	@echo Distribution package created as $(PACKAGE).tgz
 
 clean:
+	@-rm -f $(PODIR)/*.mo $(PODIR)/*.pot
 	@-rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~
+
+# Dependencies:
+
+MAKEDEP = g++ -MM -MG
+DEPFILE = .dependencies
+$(DEPFILE): Makefile
+	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) > $@
+
+-include $(DEPFILE)
+
+### Internationalization (I18N):
+
+PODIR     = po
+LOCALEDIR = $(VDRDIR)/locale
+I18Npo    = $(wildcard $(PODIR)/*.po)
+I18Nmo    = $(addsuffix .mo, $(foreach file, $(I18Npo), $(basename $(file))))
+I18Ndirs  = $(notdir $(foreach file, $(I18Npo), $(basename $(file))))
+I18Npot   = $(PODIR)/$(PLUGIN).pot
+
+%.mo: %.po
+	msgfmt -c -o $@ $<
+
+$(I18Npot): $(wildcard *.c)
+	xgettext -C -cTRANSLATORS --no-wrap -F -k -ktr -ktrNOOP --msgid-bugs-address='<vdr@joachim-wilke.de>' -o $@ $(wildcard *.c)
+
+$(I18Npo): $(I18Npot)
+	msgmerge -U --no-wrap -F --backup=none -q $@ $<
+
+i18n: $(I18Nmo)
+	@mkdir -p $(LOCALEDIR)
+	for i in $(I18Ndirs); do\
+	    mkdir -p $(LOCALEDIR)/$$i/LC_MESSAGES;\
+	    cp $(PODIR)/$$i.mo $(LOCALEDIR)/$$i/LC_MESSAGES/$(I18N_PREFIX)$(PLUGIN).mo;\
+	    done
+

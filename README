@@ -78,6 +78,10 @@ RecordingStatus
   configures whether the recording status is displayed "detailed" 
   (for every dvb card) or only "simple".
 
+ShowTime
+  implemented by Sebastian Frei <sebastian@schnapsleichen.de>
+  disable this if you have a small display and don't want to have
+  the time displayed in the top line
 
 LCDproc is available at http://lcdproc.omnipotent.net/
 or here http://sourceforge.net/projects/lcdproc/

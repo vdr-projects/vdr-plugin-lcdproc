@@ -20,5 +20,6 @@ cLcdSetup::cLcdSetup(void)
   for (int i = 0; i < LCDMAXOUTPUTS; i++)
     OutputFunction[i] = 0;
   RecordingStatus = 0;
+  ShowTime = 1;
 }
 

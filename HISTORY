@@ -1,11 +1,10 @@
 VDR Plugin 'lcdproc' Revision History
 ------------------------------------
 
-2006-11-12: Version 0.0.10-jw2
-- added new simple recording status (can be configured via the setup)
-- added german translations
-- removed unused PrioWait parameter (can somebody tell me, what this should wait for?)
-- fixed some typos in the readme file
+2002-05-20: Version 0.0.1
+- Initial revision.
+
+[...]
 
 2006-09-24: Version 0.0.10-jw1
 - speedup in EPG handling
@@ -14,8 +13,15 @@ VDR Plugin 'lcdproc' Revision History
 - implemented service interface for radio plugin (displaying radio text info)
 - fixed the handling of cStatus::SetVolume information
 
-[...]
+2006-11-12: Version 0.0.10-jw2
+- added new simple recording status (can be configured via the setup)
+- added german translations
+- removed unused PrioWait parameter (can somebody tell me, what this should wait for?)
+- fixed some typos in the readme file
 
-2002-05-20: Version 0.0.1
-
-- Initial revision.
+2008-03-08: Version 0.0.10-jw3
+- added support for gettext (VDR >= 1.5.7)
+- Modified support for gettext (VDR >= 1.5.8)
+- Rearranged targets in the makefile
+- date/time-line can now be disabled (for two line LCDs)
+  (patch provided by Sebastian Frei <sebastian@schnapsleichen.de>)

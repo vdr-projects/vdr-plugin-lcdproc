@@ -1,0 +1,121 @@
+# VDR plugin language source file.
+# Copyright (C) 2007 Klaus Schmidinger <kls@cadsoft.de>
+# This file is distributed under the same license as the VDR package.
+# Mogens Elneff <mogens@elneff.dk>, 2004
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: VDR 1.5.7\n"
+"Report-Msgid-Bugs-To: <vdr@joachim-wilke.de>\n"
+"POT-Creation-Date: 2008-03-08 21:12+0100\n"
+"PO-Revision-Date: 2007-08-12 20:41+0200\n"
+"Last-Translator: Mogens Elneff <mogens@elneff.dk>\n"
+"Language-Team: <vdr@linuxtv.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ISO-8859-15\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: lcd.c:126
+#, c-format
+msgid "Schedule - %s"
+msgstr ""
+
+#: lcd.c:273
+msgid "Mute"
+msgstr ""
+
+#: lcd.c:288
+msgid "Volume "
+msgstr ""
+
+#: lcd.c:608
+msgid "RECORDING"
+msgstr ""
+
+#: lcd.c:711 lcd.c:742 lcdproc.c:202 lcdproc.c:212
+msgid "No EPG info available."
+msgstr ""
+
+#: lcdproc.c:72
+msgid "Waiting for EPG info."
+msgstr ""
+
+#: lcdproc.c:345
+msgid "off"
+msgstr ""
+
+#: lcdproc.c:346
+msgid "on"
+msgstr ""
+
+#: lcdproc.c:347
+msgid "auto"
+msgstr ""
+
+#: lcdproc.c:348
+msgid "detailed"
+msgstr ""
+
+#: lcdproc.c:349
+msgid "simple"
+msgstr ""
+
+#: lcdproc.c:352
+msgid "FullCycle"
+msgstr ""
+
+#: lcdproc.c:353
+msgid "TimeDateCycle"
+msgstr ""
+
+#: lcdproc.c:354
+msgid "VolumeKeep"
+msgstr ""
+
+#: lcdproc.c:355
+msgid "Scrollwait"
+msgstr ""
+
+#: lcdproc.c:356
+msgid "Scrollspeed"
+msgstr ""
+
+#: lcdproc.c:357
+msgid "Charmap"
+msgstr ""
+
+#: lcdproc.c:358
+msgid "AltShift"
+msgstr ""
+
+#: lcdproc.c:359
+msgid "BackLight"
+msgstr ""
+
+#: lcdproc.c:360
+msgid "SetClientPriority"
+msgstr ""
+
+#: lcdproc.c:361
+msgid "NormalClientPriority"
+msgstr ""
+
+#: lcdproc.c:362
+msgid "HighClientPriority"
+msgstr ""
+
+#: lcdproc.c:363
+msgid "BackLightWait"
+msgstr ""
+
+#: lcdproc.c:364 lcdproc.c:366
+msgid "OutputNumber"
+msgstr "RECORDING"
+
+#: lcdproc.c:369
+msgid "Recording status"
+msgstr ""
+
+#: lcdproc.c:370
+msgid "Show time"
+msgstr ""
