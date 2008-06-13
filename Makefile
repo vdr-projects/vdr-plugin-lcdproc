@@ -1,14 +1,16 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id: Makefile 1.7 2003/12/21 15:47:41 kls Exp $
+# $Id$
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
 # By default the main source file also carries this name.
+# IPORTANT: the presence of this macro is important for the Make.config
+# file. So it must be defined, even if it is not used here!
 #
 PLUGIN = lcdproc
-
+	
 ### The version number of this plugin (taken from the main source file):
 
 VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ print $$6 }' | sed -e 's/[";]//g')
@@ -16,11 +18,10 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 ### The C++ compiler and options:
 
 CXX      ?= g++
-CXXFLAGS ?= -O2 -Wall -Woverloaded-virtual
+CXXFLAGS ?= -fPIC -g -O2 -Wall -Woverloaded-virtual
 
 ### The directory environment:
 
-DVBDIR = ../../../../DVB
 VDRDIR = ../../..
 LIBDIR = ../../lib
 TMPDIR = /tmp
@@ -29,16 +30,12 @@ TMPDIR = /tmp
 
 -include $(VDRDIR)/Make.config
 
-### The version number of VDR (taken from VDR's "config.h"):
+### The version number of VDR's plugin API (taken from VDR's "config.h"):
 
-APIVERSION = $(shell grep 'define APIVERSION ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
+APIVERSION = $(shell sed -ne '/define APIVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
 VDRVERSNUM = $(shell grep 'define VDRVERSNUM ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
-USE_GETTEXT= $(shell test $(VDRVERSNUM) -ge 10507 && echo yes)
-USE_GETTEXT_V2= $(shell test $(VDRVERSNUM) -ge 10508 && echo yes)
-
-ifeq ($(USE_GETTEXT_V2),yes)
-I18N_PREFIX = vdr-
-endif
+DOXYFILE = Doxyfile
+DOXYGEN  = doxygen
 
 ### The name of the distribution archive:
 
@@ -47,41 +44,24 @@ PACKAGE = vdr-$(ARCHIVE)
 
 ### Includes and Defines (add further entries here):
 
-INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include
+INCLUDES += -I$(VDRDIR)/include
 
 DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
-
-ifeq ($(shell echo $(APIVERSION)|sed -e 's/\([0-9]\.[0-9]\)\..*/\1/' ),1.2)
-  DEFINES += -DOLDVDR
-endif
-
-ifdef LCDKEYCONF
-  DEFINES += -DLCD_EXT_KEY_CONF="\"$(LCDKEYCONF)\""
-endif
-
-
 
 ### The object files (add further files here):
 
 OBJS = $(PLUGIN).o lcd.o sockets.o setup.o
 
-ifneq ($(USE_GETTEXT),yes)
-OBJS += i18n.o
-endif
-
 ### Targets:
-ifeq ($(USE_GETTEXT),yes)
 all: libvdr-$(PLUGIN).so i18n
-else
-all: libvdr-$(PLUGIN).so
-endif
+libvdr-$(PLUGIN).so: $(OBJS)
+	$(CXX) $(CXXFLAGS) -shared $(OBJS) -o $@
+	@cp --remove-destination $@ $(LIBDIR)/$@.$(APIVERSION)
+	
 
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
 
-libvdr-$(PLUGIN).so: $(OBJS)
-	$(CXX) $(CXXFLAGS) -shared $(OBJS) -o $@
-	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
 
 dist: clean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
@@ -95,37 +75,43 @@ clean:
 	@-rm -f $(PODIR)/*.mo $(PODIR)/*.pot
 	@-rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~
 
-# Dependencies:
-
-MAKEDEP = g++ -MM -MG
-DEPFILE = .dependencies
-$(DEPFILE): Makefile
-	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) > $@
-
--include $(DEPFILE)
-
 ### Internationalization (I18N):
 
 PODIR     = po
 LOCALEDIR = $(VDRDIR)/locale
 I18Npo    = $(wildcard $(PODIR)/*.po)
-I18Nmo    = $(addsuffix .mo, $(foreach file, $(I18Npo), $(basename $(file))))
-I18Ndirs  = $(notdir $(foreach file, $(I18Npo), $(basename $(file))))
+I18Nmsgs  = $(addprefix $(LOCALEDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo, $(notdir $(foreach file, $(I18Npo), $(basename $(file))))))
 I18Npot   = $(PODIR)/$(PLUGIN).pot
 
 %.mo: %.po
 	msgfmt -c -o $@ $<
 
 $(I18Npot): $(wildcard *.c)
-	xgettext -C -cTRANSLATORS --no-wrap -F -k -ktr -ktrNOOP --msgid-bugs-address='<vdr@joachim-wilke.de>' -o $@ $(wildcard *.c)
+	xgettext -C -cTRANSLATORS --no-wrap -F -k -ktr -ktrNOOP --msgid-bugs-address='<vdr@joachim-wilke.de>' -o $@ $^
 
-$(I18Npo): $(I18Npot)
+%.po: $(I18Npot)
 	msgmerge -U --no-wrap -F --backup=none -q $@ $<
+	@touch $@
 
-i18n: $(I18Nmo)
-	@mkdir -p $(LOCALEDIR)
-	for i in $(I18Ndirs); do\
-	    mkdir -p $(LOCALEDIR)/$$i/LC_MESSAGES;\
-	    cp $(PODIR)/$$i.mo $(LOCALEDIR)/$$i/LC_MESSAGES/$(I18N_PREFIX)$(PLUGIN).mo;\
-	    done
+$(I18Nmsgs): $(LOCALEDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
+	@mkdir -p $(dir $@)
+	cp $< $@
 
+.PHONY: i18n
+i18n: $(I18Nmsgs)
+
+srcdoc:
+	@cp $(DOXYFILE) $(DOXYFILE).tmp
+	@echo PROJECT_NUMBER = $(VERSION) >> $(DOXYFILE).tmp
+	$(DOXYGEN) $(DOXYFILE).tmp
+	@rm $(DOXYFILE).tmp
+				
+
+# Dependencies:
+
+MAKEDEP = $(CXX) -MM -MG
+DEPFILE = .dependencies
+$(DEPFILE): Makefile
+	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) > $@
+
+-include $(DEPFILE)

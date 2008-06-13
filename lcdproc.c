@@ -12,13 +12,12 @@
 #include <vdr/status.h>
 #include <vdr/recording.h>
 #include "setup.h"
-#include "i18n.h"
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.10-jw3";
+static const char *VERSION        = "0.0.10-jw4";
 static const char *MAINMENUENTRY  = NULL;
-static const char *DESCRIPTION    = "LCDproc output";
+static const char *DESCRIPTION    = trNOOP("LCDproc output");
 
 cLcd *LCDproc = new cLcd;
 bool replaymode=false;
@@ -134,12 +133,16 @@ void cLcdFeed::OsdTitle(const char *Title)
 
 void cLcdFeed::OsdStatusMessage(const char *Message)
 {
-  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdStatusMessage '%s'", Message);
-  if ( Message ) 
-    if ( menumode ) 
-      LCDproc->SetStatus(Message);
-    else 
-      LCDproc->SetWarning(Message);
+	//syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdStatusMessage '%s'", Message);
+	if ( Message ) {
+		if ( menumode ) 
+			LCDproc->SetStatus(Message);
+		else 
+			LCDproc->SetWarning(Message);
+	}
+	else {
+		OsdClear( );
+	}
 }
 
 void cLcdFeed::OsdHelpKeys(const char *Red, const char *Green, const char *Yellow, const char *Blue)
@@ -222,7 +225,7 @@ public:
   cPluginLcd(void);
   virtual ~cPluginLcd();
   virtual const char *Version(void) { return VERSION; }
-  virtual const char *Description(void) { return DESCRIPTION; }
+  virtual const char *Description(void) { return tr(DESCRIPTION); }
   virtual const char *CommandLineHelp(void);
   virtual bool ProcessArgs(int argc, char *argv[]);
   virtual bool Start(void);
@@ -282,9 +285,6 @@ bool cPluginLcd::ProcessArgs(int argc, char *argv[])
 bool cPluginLcd::Start(void)
 {
   // Start any background activities the plugin shall perform.
-#if VDRVERSNUM < 10507  
-  RegisterI18n(Phrases);
-#endif
   lcdFeed = new cLcdFeed;
   if ( LCDproc->Connect(LCDprocHOST,LCDprocPORT) ) {
     syslog(LOG_INFO, "connection to LCDd at %s:%d established.",LCDprocHOST,LCDprocPORT);

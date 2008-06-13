@@ -25,3 +25,27 @@ VDR Plugin 'lcdproc' Revision History
 - Rearranged targets in the makefile
 - date/time-line can now be disabled (for two line LCDs)
   (patch provided by Sebastian Frei <sebastian@schnapsleichen.de>)
+
+2008-06-14: Version 0.0.10-jw4
+- clean up in po-dir
+- removed support for old vdr versions (VDR >= 1.6 required)
+- rearranged targets in the makefile
+  according to a discussion in the VDR mailing list
+- new makefile target "srcdoc" to generate source code documentation
+- Improved the 'i18n' target in the Makefile to avoid unnecessary work as suggested by
+  vdr-1.5.11
+- updated german translations
+- fixed translation of DESCRIPTION
+- added italian translation 
+  (provided by Diego Pierotto <vdr-italian@tiscali.it>)
+- fixed displaying the the shortend title of the "Schedule" menu
+- fixed implementation of cLcdFeed::OsdStatusMessage to handle a call with message = NULL
+  correctly
+- implemented char conversion to support vdr systems running with charsets different 
+  than ISO-8859-1. Remember, that the range of characters which can be displayed is 
+  limited by the lcdproc core and is therefore not extended.
+  (thanks for debugging and testing to
+   - Ville Aakko <ville.aakko@gmail.com>, 
+   - MichaelB <http://www.vdr-portal.de/board/profile.php?userid=12822>
+   - Joe_D <http://vdrportal.de/board/profile.php?userid=20491> )
+   

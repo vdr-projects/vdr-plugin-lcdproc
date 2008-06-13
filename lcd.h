@@ -5,7 +5,6 @@
 #include <vdr/device.h>
 #include <vdr/player.h>
 #include <vdr/dvbplayer.h>
-#include "i18n.h"
 
 #define LCDPORT 13666
 #define LCDHOST "localhost"
@@ -37,7 +36,7 @@ class cLcd : public cThread {
     void Close();
     void Info();
     void SetTitle( const char *string);
-    void SetMain( unsigned int n, const char *string);
+    void SetMain( unsigned int n, const char *string, bool isConverted = false );
     void SetHelp( unsigned int n, const char *Red, const char *Green, const char *Yellow, const char *Blue);
     void SetStatus( const char *string);
     void SetWarning( const char *string);
@@ -45,9 +44,8 @@ class cLcd : public cThread {
     void SetProgress(const char *begin=NULL, const char *end=NULL, int percent=0); 
     void SetLine(unsigned int n, unsigned int l, const char *string); 
     void SetLineC(unsigned int n, unsigned int l, const char *string); 
-    void SetBuffer(unsigned int n,const char *l1=NULL,const char *l2=NULL,const char *l3=NULL,const char *l4=NULL);
     void SetRunning(bool nownext, const char *string1="\0", const char *string2="\0", const char *string3="\0"); 
-    void SummaryInit(char *string); 
+    void SummaryInit(const char *string); 
     void SummaryUp();
     void SummaryDown();
     void SummaryDisplay();
@@ -68,9 +66,12 @@ class cLcd : public cThread {
     cMutex CriticalArea;
     unsigned int sock, wid, hgt, cellwid, cellhgt;
     char StringBuffer[2*LCDMAXWID+1];
+    cCharSetConv *conv;
+    const char* Convert(const char *s);
     void BeginMutualExclusion();
     void EndMutualExclusion();    
     void Copy(char *to, const char *from, unsigned int max);
+    void SetBuffer(unsigned int n,const char *l1=NULL,const char *l2=NULL,const char *l3=NULL,const char *l4=NULL);
     void Split(char *string, char *string1, char *string2);
     void Write(int line, const char *string);
     void GetTimeDateStat( char *string, unsigned int OutStateData[] );

@@ -10,7 +10,6 @@
 #include "setup.h"
 #include "lcd.h"
 #include "sockets.h"
-#include "i18n.h"
 #include <vdr/plugin.h>
 
 #ifdef LCD_EXT_KEY_CONF 
@@ -45,10 +44,17 @@ cLcd::cLcd() {
   ThreadStateData.barx=1, ThreadStateData.bary=1, ThreadStateData.barl=0; 
   for (i=0;i<LCDMAXCARDS;i++) ThreadStateData.CardStat[i]=0;
   channelSwitched = false;
+  SummaryText = NULL;
+//#if VDRVERSNUM < 10701
+  conv = new cCharSetConv(cCharSetConv::SystemCharacterTable() ? cCharSetConv::SystemCharacterTable() : "UTF-8", "ISO-8859-1");
+//#else
+//  conv = new cCharSetConv(NULL, "ISO-8859-1");
+//#endif
 }
 
 cLcd::~cLcd() {
-  if (connected) { /*cLcd::Stop();*/  cLcd::Close(); }   //YYYY
+  if (connected) { cLcd::Close(); }  
+  if (conv) { delete(conv); }
 }
 
 bool cLcd::Connect( char *host, unsigned int port ) {
@@ -111,6 +117,18 @@ void cLcd::Close() {
   connected=false; sock=wid=hgt=cellwid=cellhgt=0; 
 }
 
+const char* cLcd::Convert(const char *s) {
+	// do character recoding to ISO-8859-1
+	if (!s) return s;
+	if (strlen(s)==0) return s;
+	const char *s_converted = conv->Convert(s);
+	if (s_converted == s) {
+	  esyslog("lcdproc-plugin: conversion from %s to ISO-8859-1 failed.", cCharSetConv::SystemCharacterTable());
+	  esyslog("lcdproc-plugin: '%s'",s);
+	}
+	return s_converted;
+}
+
 void cLcd::Info() { // just for testing ...
  if (connected)
    printf("sock %d, wid %d, hgt %d, cellwid %d, cellhgt %d\n",sock, wid, hgt, cellwid, cellhgt);
@@ -120,86 +138,102 @@ void cLcd::Info() { // just for testing ...
 
 void cLcd::SetTitle( const char *string) {
   if (!connected) return;
-                        
+  
+  const char* c_string = Convert(string);
+                     
   unsigned int i;
   char title[wid+1];
-  const char *trstring=tr("Schedule - %s");
+  
+  // we need to know the length of the translated string "Schedule" 
+  const char *trstring=trVDR("Schedule - %s");
   int trstringlength=strlen(trstring)-3;
 
-  if (strncmp(trstring,string,trstringlength)==0) {
-    title[0]='>'; snprintf( title+1, wid,"%s",string+trstringlength);
-  } else if (strlen(string) > (wid-1)) {
-    snprintf( title, wid+1,"%s",string);
+  if (strncmp(trstring,c_string,trstringlength)==0) {
+    // it is the title of the "Schedule" menu, so we replace "Schedule" with ">"	  
+    title[0]='>'; snprintf( title+1, wid,"%s",c_string+trstringlength);
+  } else if (strlen(c_string) > (wid-1)) {
+    snprintf( title, wid+1,"%s",c_string);
   } else {
     memset(title,' ',wid/2+1);
-    snprintf(title + ( (wid-strlen(string))/2 ),wid-( (wid-strlen(string))/2 ),"%s",string); // center title
+    snprintf(title + ( (wid-strlen(c_string))/2 ),wid-( (wid-strlen(c_string))/2 ),"%s",c_string); // center title
     for (i=0;i<strlen(title);i++) title[i]=toupper(title[i]); // toupper
   }
   cLcd::SetLine(LCDMENU,0,title);
 }
 
-void cLcd::SetMain( unsigned int n, const char *string) {
-  if (!connected) return;
- 
-  char line2[wid+1];
-  char line3[wid+1];
+void cLcd::SetMain( unsigned int n, const char *string, bool isConverted) {
+	const char* c_string;
+	
+	if (!connected) return;
 
-  if (string != NULL) {
-    cLcd::Copy(ThreadStateData.lcdfullbuffer[n],string,LCDMAXFULLSTRING-3);
-    int i = strlen(ThreadStateData.lcdfullbuffer[n]);
-    ThreadStateData.lcdfullbuffer[n][i++]=' ';
-    ThreadStateData.lcdfullbuffer[n][i++]='*';
-    ThreadStateData.lcdfullbuffer[n][i++]=' ';
-    ThreadStateData.lcdfullbuffer[n][i]='\0';
-    ThreadStateData.newscroll=true;
-    cLcd::Copy(StringBuffer,string,2*wid);
-    cLcd::Split(StringBuffer,line2,line3);
-    cLcd::SetBuffer(n,NULL,line2,line3,NULL);
-  } else {
-    //cLcd::SetBuffer(n,NULL," \0"," \0",NULL);
-    ThreadStateData.lcdfullbuffer[n][0]='\0';
-  }
+	if (isConverted)
+		c_string = string;
+	else
+		c_string = Convert(string);
+
+	char line2[wid+1];
+	char line3[wid+1];
+
+	if (c_string != NULL) {
+		cLcd::Copy(ThreadStateData.lcdfullbuffer[n],c_string,LCDMAXFULLSTRING-3);
+		int i = strlen(ThreadStateData.lcdfullbuffer[n]);
+		ThreadStateData.lcdfullbuffer[n][i++]=' ';
+		ThreadStateData.lcdfullbuffer[n][i++]='*';
+		ThreadStateData.lcdfullbuffer[n][i++]=' ';
+		ThreadStateData.lcdfullbuffer[n][i]='\0';
+		ThreadStateData.newscroll=true;
+		cLcd::Copy(StringBuffer,c_string,2*wid);
+		cLcd::Split(StringBuffer,line2,line3);
+		cLcd::SetBuffer(n,NULL,line2,line3,NULL);
+	} else {
+		//cLcd::SetBuffer(n,NULL," \0"," \0",NULL);
+		ThreadStateData.lcdfullbuffer[n][0]='\0';
+	}
 }
 
 void cLcd::SetHelp( unsigned int n, const char *Red, const char *Green, const char *Yellow, const char *Blue) {
   if (!connected) return;
-
+ 
   char help[2*wid], red[wid+1], green[wid+1], yellow[wid+1], blue[wid+1];
   unsigned int allchars=0, i,j , empty=0, spacewid=1;
   char *longest, *longest1, *longest2;
 
-  if ( Red==NULL || Red[0]=='\0' ) { 
+  const char* c_Red    = Convert(Red);
+  if ( c_Red==NULL || c_Red[0]=='\0' ) { 
     empty++; red[0]=' '; red[1]='\0';
   } else { 
-    j=i=0; while ( (i<wid) && (Red[i] != '\0') ) { 
-      if (Red[i] !=' ') {red[j]=Red[i]; j++; }
+    j=i=0; while ( (i<wid) && (c_Red[i] != '\0') ) { 
+      if (c_Red[i] !=' ') {red[j]=c_Red[i]; j++; }
       i++;     
     } red[j]='\0';
     allchars+=strlen(red); 
   }
-  if ( Green==NULL || Green[0]=='\0' )  { 
+  const char* c_Green  = Convert(Green);
+  if ( c_Green==NULL || c_Green[0]=='\0' )  { 
     empty++; green[0]=' '; green[1]='\0';
   } else { 
-    j=i=0; while ( (i<wid) && (Green[i] != '\0') ) { 
-      if (Green[i] !=' ') {green[j]=Green[i]; j++; }
+    j=i=0; while ( (i<wid) && (c_Green[i] != '\0') ) { 
+      if (c_Green[i] !=' ') {green[j]=c_Green[i]; j++; }
       i++;     
     } green[j]='\0';
     allchars+=strlen(green); 
   }
-  if ( Yellow==NULL || Yellow[0]=='\0' ) { 
+  const char* c_Yellow = Convert(Yellow);
+  if ( c_Yellow==NULL || c_Yellow[0]=='\0' ) { 
     empty++; yellow[0]=' '; yellow[1]='\0';
   } else { 
-    j=i=0; while ( (i<wid) && (Yellow[i] != '\0') ) { 
-      if (Yellow[i] !=' ') {yellow[j]=Yellow[i]; j++; }
+    j=i=0; while ( (i<wid) && (c_Yellow[i] != '\0') ) { 
+      if (c_Yellow[i] !=' ') {yellow[j]=c_Yellow[i]; j++; }
       i++;     
     } yellow[j]='\0';
     allchars+=strlen(yellow); 
   }
-  if ( Blue==NULL || Blue[0]=='\0' ) { 
+  const char* c_Blue   = Convert(Blue);
+  if ( c_Blue==NULL || c_Blue[0]=='\0' ) { 
     empty++; blue[0]=' '; blue[1]='\0';
   } else { 
-    j=i=0; while ( (i<wid) && (Blue[i] != '\0') ) { 
-      if (Blue[i] !=' ') {blue[j]=Blue[i]; j++; }
+    j=i=0; while ( (i<wid) && (c_Blue[i] != '\0') ) { 
+      if (c_Blue[i] !=' ') {blue[j]=c_Blue[i]; j++; }
       i++;     
     } blue[j]='\0';
     allchars+=strlen(blue); 
@@ -234,26 +268,30 @@ void cLcd::SetHelp( unsigned int n, const char *Red, const char *Green, const ch
 
 void cLcd::SetStatus( const char *string) {
   if (!connected) return;
+  
+  const char* c_string = Convert(string);
                    
   char statstring[2*wid+1];
 
-  if (string == NULL) {
-    cLcd::SetMain(LCDMENU,StringBuffer);
+  if (c_string == NULL) {
+    cLcd::SetMain(LCDMENU,StringBuffer,true);
   } else {
-    cLcd::Copy(statstring,string,2*wid);
+    cLcd::Copy(statstring,c_string,2*wid);
     cLcd::SetMain(LCDMENU,statstring);
   }
 }
 
 void cLcd::SetWarning( const char *string) {
   if (!connected) return;
+  
+  const char* c_string = Convert(string);
 
   char statstring[2*wid+1];
 
-  if (string != NULL) {
-    cLcd::Copy(statstring,string,2*wid);
+  if (c_string != NULL) {
+    cLcd::Copy(statstring,c_string,2*wid);
     cLcd::Clear(LCDMISC);
-    cLcd::SetMain(LCDMISC,statstring);
+    cLcd::SetMain(LCDMISC,statstring,true);
     cLcd::SetThreadState(Misc);
   }
 }
@@ -270,7 +308,7 @@ if (!connected) return;
   EndMutualExclusion();
   if (ThreadStateData.muted) {
     cLcd::SetLine(Vol,0," ");
-    cLcd::SetLine(Vol,1,tr("Mute"));
+    cLcd::SetLine(Vol,1,Convert(tr("Mute")));
     cLcd::SetLine(Vol,2," ");
     cLcd::SetLine(Vol,3," ");
   } else {
@@ -285,7 +323,7 @@ if (!connected) return;
         cLcd::SetLine(Vol,2," ");
       }
     } else {
-      cLcd::SetLine(Vol,0,tr("Volume "));
+      cLcd::SetLine(Vol,0,Convert(tr("Volume ")));
       cLcd::SetLine(Vol,3,"|---|---|---|---|---|---|---|---|---|---");
       cLcd::SetLine(Vol,1,"|---|---|---|---|---|---|---|---|---|---");
       cLcd::SetLine(Vol,2," ");
@@ -325,7 +363,7 @@ void cLcd::SetProgress(const char *begin, const char *end, int percent) {
 
 void cLcd::SetLine(unsigned int n, unsigned int l, const char *string) {
   if (!connected) return;
-
+  
   BeginMutualExclusion();
     if (string != NULL) strncpy(ThreadStateData.lcdbuffer[n][l],string,wid+1);
     ThreadStateData.lcddirty[n][l]=true;
@@ -334,9 +372,11 @@ void cLcd::SetLine(unsigned int n, unsigned int l, const char *string) {
 
 void cLcd::SetLineC(unsigned int n, unsigned int l, const char *string) {
   if (!connected) return;
-
+  
+  const char* c_string = Convert(string);  
+  
   BeginMutualExclusion();
-    if (string != NULL) cLcd::Copy(ThreadStateData.lcdbuffer[n][l],string,wid);
+    if (c_string != NULL) cLcd::Copy(ThreadStateData.lcdbuffer[n][l],c_string,wid);
     ThreadStateData.lcddirty[n][l]=true;
   EndMutualExclusion();
 }
@@ -354,20 +394,27 @@ void cLcd::SetBuffer(unsigned int n, const char *l1,const char *l2,const char *l
 
 void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, const char *string3) {
   if (!connected) return;
-
+    
   char line[1024];
   char line1[1024];
 
   static char now1[LCDMAXWID+1];
   static char now2[LCDMAXWID+1];
   
+  char *c_string1 = string1 ? strdup(Convert(string1)) : NULL;
+  char *c_string2 = string2 ? strdup(Convert(string2)) : NULL;
+  char *c_string3 = string3 ? strdup(Convert(string3)) : NULL;
+  
   snprintf(line,1024,"%s %s%s%s",
-    (string1==NULL || string1[0]=='\0')?" ":string1,
-    (string2==NULL || string2[0]=='\0')?" ":string2,
+    (string1==NULL || string1[0]=='\0')?" ":c_string1,
+    (string2==NULL || string2[0]=='\0')?" ":c_string2,
     (string3==NULL || string3[0]=='\0')?"":"|",
-    (string3==NULL || string3[0]=='\0')?" ":string3);
+    (string3==NULL || string3[0]=='\0')?" ":c_string3);
   cLcd::Copy(line1,line,2*wid);
- 
+  
+  free(c_string1);
+  free(c_string2);
+  free(c_string3);
   
   
   if (nownext) {
@@ -393,9 +440,12 @@ void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, c
   }
 }
 
-void cLcd::SummaryInit(char *string) {
-  SummaryText  = string;
-  SummaryTextL = strlen(string);
+void cLcd::SummaryInit(const char *string) {
+	
+  if (SummaryText)
+	  free(SummaryText);
+  SummaryText  = strdup(Convert(string));
+  SummaryTextL = strlen(SummaryText);
   SummaryCurrent=0;
 }
 
@@ -479,10 +529,10 @@ void cLcd::BeginMutualExclusion() {
 }
 
 void cLcd::EndMutualExclusion() {
-  cLcd::CriticalArea.Unlock();
+  CriticalArea.Unlock();
 }
 
-void cLcd::Copy(char *to, const char *from, unsigned int max) { // eliminates tabs, double blanks ...
+void cLcd::Copy(char *to, const char *from, unsigned int max) { // eliminates tabs, double blanks, ...
 
   unsigned int i=0 , out=0;
 
@@ -567,6 +617,7 @@ void cLcd::Write(int line, const char *string) { // used for any text output to 
   } else {
     sprintf(workstring,"widget_set VDR line%d %d %d \"",line,(line==3||line==4)?wid+1:1,(line==1||line==4)?1:2);
   }	  
+  // do lcdtranstbl mapping
   out=strlen(workstring);
   for (i=0;(i<strlen(string)) && (i<wid);i++)
     workstring[out++] = LcdTransTbl[LcdSetup.Charmap][ (unsigned char) string[i] ]; // char mapping see lcdtranstbl.h
@@ -591,7 +642,7 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
   if ( offset || !( ShowStates && ((t%LcdSetup.FullCycle) >= LcdSetup.TimeCycle) )) {  
     if (wid > 19) 
       snprintf(string,wid+1,"<%s %02d.%02d %02d:%02d:%02d>",
-        *WeekDayName(now->tm_wday), now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
+        Convert(*WeekDayName(now->tm_wday)), now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
     else
       snprintf(string,wid+1,"<%02d.%02d %02d:%02d:%02d>",
         now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
@@ -605,7 +656,7 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
       }
     }
     else {
-      snprintf(string,wid+1,"<%s %02d:%02d:%02d>", tr("RECORDING"), now->tm_hour, now->tm_min,now->tm_sec);
+      snprintf(string,wid+1,"<%s %02d:%02d:%02d>", Convert(tr("RECORDING")), now->tm_hour, now->tm_min,now->tm_sec);
     }
   }
 
@@ -689,38 +740,6 @@ void cLcd::Action(void) { // LCD output thread
     nextLcdUpdate = 0; //trigger next epg update
   }
 
-#ifdef OLDVDR
-
-    if ( time(NULL) > nextLcdUpdate ) {
-      const cEventInfo *Present = NULL;
-      cMutexLock MutexLock;
-      const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
-      if (Schedules) {
-         const cSchedule *Schedule = Schedules->GetSchedule();
-         if (Schedule) {
-            const char *PresentTitle, *PresentSubtitle;
-            PresentTitle = NULL; PresentSubtitle = NULL;
-            if ((Present = Schedule->GetPresentEvent()) != NULL) {
-               nextLcdUpdate=Present->GetTime()+Present->GetDuration();
-               PresentTitle = Present->GetTitle();
-               PresentSubtitle = Present->GetSubtitle();
-               if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
-                  SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
-                  else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
-            } else
-               SetRunning(false,tr("No EPG info available."), NULL);
-            if ((Present = Schedule->GetFollowingEvent()) != NULL)
-              nextLcdUpdate=(Present->GetTime()<nextLcdUpdate)?Present->GetTime():nextLcdUpdate;
-            rtcycle = 10; // RT
-	    lcrCycle = 10; // LCR
-         }
-      }
-     if ( nextLcdUpdate <= time(NULL) )
-         nextLcdUpdate=(time(NULL)/60)*60+60;
-    }
-
-#else
-   
     if ( time(NULL) > nextLcdUpdate ) { 
       cChannel *channel = Channels.GetByNumber(primaryDvbApi->CurrentChannel());
       const cEvent *Present = NULL;
@@ -750,9 +769,6 @@ void cLcd::Action(void) { // LCD output thread
          nextLcdUpdate=(time(NULL)/60)*60+60;
     }  
 
-#endif
-
-#if VDRVERSNUM >= 10330
     // get&display Radiotext
     if (++rtcycle > 10) {	// every 10 times
         cPlugin *p;
@@ -792,7 +808,6 @@ void cLcd::Action(void) { // LCD output thread
              }
          }
      }
-#endif
 
     // replaying
     

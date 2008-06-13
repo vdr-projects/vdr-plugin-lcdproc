@@ -9,115 +9,117 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <vdr@joachim-wilke.de>\n"
-"POT-Creation-Date: 2008-03-08 21:12+0100\n"
-"PO-Revision-Date: 2007-08-12 20:41+0200\n"
-"Last-Translator: Sean Carlos <seanc@libero.it>\n"
-"Language-Team: <vdr@linuxtv.org>\n"
+"POT-Creation-Date: 2008-06-14 18:05+0200\n"
+"PO-Revision-Date: 2008-03-30 19:32+0100\n"
+"Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
+"Language-Team:  <vdr@linuxtv.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=ISO-8859-15\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: lcd.c:126
-#, c-format
-msgid "Schedule - %s"
-msgstr ""
-
-#: lcd.c:273
+#: lcd.c:311
 msgid "Mute"
-msgstr ""
+msgstr "Muto"
 
-#: lcd.c:288
+#: lcd.c:326
 msgid "Volume "
-msgstr ""
+msgstr "Volume"
 
-#: lcd.c:608
+#: lcd.c:659
 msgid "RECORDING"
+msgstr "REGISTRAZIONE"
+
+#: lcd.c:761 lcdproc.c:205 lcdproc.c:215
+msgid "No EPG info available."
+msgstr "Nessun info EPG disponibile."
+
+#: lcdproc.c:20
+msgid "LCDproc output"
 msgstr ""
 
-#: lcd.c:711 lcd.c:742 lcdproc.c:202 lcdproc.c:212
-msgid "No EPG info available."
-msgstr "No EPG info available."
-
-#: lcdproc.c:72
+#: lcdproc.c:71
 msgid "Waiting for EPG info."
-msgstr "Scanning for EPG info."
+msgstr "Scansione info EPG."
 
 #: lcdproc.c:345
 msgid "off"
-msgstr ""
+msgstr "disattivo"
 
 #: lcdproc.c:346
 msgid "on"
-msgstr ""
+msgstr "attivo"
 
 #: lcdproc.c:347
 msgid "auto"
-msgstr ""
+msgstr "auto"
 
 #: lcdproc.c:348
 msgid "detailed"
-msgstr ""
+msgstr "dettagliata"
 
 #: lcdproc.c:349
 msgid "simple"
-msgstr ""
+msgstr "semplice"
 
 #: lcdproc.c:352
 msgid "FullCycle"
-msgstr "FullCycle"
+msgstr "Ciclo completo"
 
 #: lcdproc.c:353
 msgid "TimeDateCycle"
-msgstr "TimeDateCycle"
+msgstr "Ciclo Data/Ora"
 
 #: lcdproc.c:354
 msgid "VolumeKeep"
-msgstr "VolumeKeep"
+msgstr "Mantieni volume"
 
 #: lcdproc.c:355
 msgid "Scrollwait"
-msgstr "Scrollwait"
+msgstr "Attesa scorrimento"
 
 #: lcdproc.c:356
 msgid "Scrollspeed"
-msgstr "Scrollspeed"
+msgstr "Velocità scorrimento"
 
 #: lcdproc.c:357
 msgid "Charmap"
-msgstr "Charmap"
+msgstr "Mappa caratteri"
 
 #: lcdproc.c:358
 msgid "AltShift"
-msgstr "AltShift"
+msgstr "Alt Shift"
 
 #: lcdproc.c:359
 msgid "BackLight"
-msgstr "BackLight"
+msgstr "Luminosità sfondo"
 
 #: lcdproc.c:360
 msgid "SetClientPriority"
-msgstr ""
+msgstr "Imposta priorità client"
 
 #: lcdproc.c:361
 msgid "NormalClientPriority"
-msgstr ""
+msgstr "Priorità client normale"
 
 #: lcdproc.c:362
 msgid "HighClientPriority"
-msgstr ""
+msgstr "Priorità client alta"
 
 #: lcdproc.c:363
 msgid "BackLightWait"
-msgstr ""
+msgstr "Attesa luminosità sfondo"
 
 #: lcdproc.c:364 lcdproc.c:366
 msgid "OutputNumber"
-msgstr "OutputNumber"
+msgstr "Numero uscita"
 
 #: lcdproc.c:369
 msgid "Recording status"
-msgstr ""
+msgstr "Stato registrazione"
 
 #: lcdproc.c:370
 msgid "Show time"
-msgstr ""
+msgstr "Mostra ora"
+
+#~ msgid "Schedule - %s"
+#~ msgstr "Programmi - %s"
