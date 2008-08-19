@@ -13,6 +13,7 @@
 #define LCDMAXWID 40
 #define LCDMAXCARDS 4
 #define LCDMAXFULLSTRING 1024
+#define MAX_LCDd_dead 12 // : 8 = sec
 
 class cLcd : public cThread {
   public:
@@ -32,7 +33,9 @@ class cLcd : public cThread {
     };
     cLcd();
     ~cLcd();
-    bool Connect( char *host = LCDHOST , unsigned int port = LCDPORT );
+    bool Connect( const char *host = LCDHOST , unsigned int port = LCDPORT );
+    bool Suspend();
+    bool Resume();
     void Close();
     void Info();
     void SetTitle( const char *string);
@@ -40,7 +43,7 @@ class cLcd : public cThread {
     void SetHelp( unsigned int n, const char *Red, const char *Green, const char *Yellow, const char *Blue);
     void SetStatus( const char *string);
     void SetWarning( const char *string);
-    void ShowVolume(unsigned int vol, bool muted ); 
+    void ShowVolume(int vol, bool muted ); 
     void SetProgress(const char *begin=NULL, const char *end=NULL, int percent=0); 
     void SetLine(unsigned int n, unsigned int l, const char *string); 
     void SetLineC(unsigned int n, unsigned int l, const char *string); 
@@ -60,7 +63,11 @@ class cLcd : public cThread {
     char *SummaryText;
     unsigned int SummaryTextL;
     unsigned int SummaryCurrent;
+    char *host;
+    unsigned int port;
     bool connected;
+    bool suspended;
+    unsigned int LCDd_dead;
     struct StateData ThreadStateData;
     time_t LastProgress;
     cMutex CriticalArea;
@@ -70,6 +77,7 @@ class cLcd : public cThread {
     const char* Convert(const char *s);
     void BeginMutualExclusion();
     void EndMutualExclusion();    
+    bool Open(); 
     void Copy(char *to, const char *from, unsigned int max);
     void SetBuffer(unsigned int n,const char *l1=NULL,const char *l2=NULL,const char *l3=NULL,const char *l4=NULL);
     void Split(char *string, char *string1, char *string2);

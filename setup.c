@@ -11,11 +11,12 @@ cLcdSetup::cLcdSetup(void)
   Scrollspeed =   3;
   Charmap     =   0;
   AltShift    =   0; 
-  BackLight   =   1; 
-  ClientPrioN = 128; 
-  ClientPrioH =  16; 
-  SetPrio     =   0; 
-  BackLightWait = 0; 
+  BackLight   =   2; 
+  ClientPrioN = 100; 
+  ClientPrioH = 255; 
+  SetPrio     =   2; 
+  BackLightWait = 20; 
+  PrioWait    =   60; 
   OutputNumber   =  0;
   for (int i = 0; i < LCDMAXOUTPUTS; i++)
     OutputFunction[i] = 0;

@@ -29,7 +29,7 @@ for more info.
 int sock_connect (char *host, unsigned short int port);
 int sock_close (int fd);
 // Send/receive lines of text
-int sock_send_string (int fd, char *string);
+int sock_send_string (int fd, const char *string);
 // Recv gives only one line per call...
 int sock_recv_string (int fd, char *dest, size_t maxlen);
 // Send/receive raw data

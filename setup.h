@@ -17,6 +17,8 @@ public:
   int ClientPrioN;
   int ClientPrioH;
   int BackLightWait;
+  int PrioWait;
+  int ClientPrioWait;
   int OutputNumber;
   int OutputFunction[LCDMAXOUTPUTS];
   int RecordingStatus;

@@ -92,7 +92,7 @@ sock_close (int fd)
 
 // Send/receive lines of text
 int
-sock_send_string (int fd, char *string)
+sock_send_string (int fd, const char *string)
 {
 	int len;
 	int offset = 0;

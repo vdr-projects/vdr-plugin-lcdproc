@@ -1,0 +1,258 @@
+diff -rupbB ./lcdproc.c ../lcdproc-0.0.10.SHF-volume/lcdproc.c
+--- ./lcdproc.c	2008-05-27 00:03:09.000000000 +0200
++++ ../lcdproc-0.0.10.SHF-volume/lcdproc.c	2007-12-13 21:41:06.000000000 +0100
+@@ -61,7 +61,7 @@ protected:
+   virtual void OsdCurrentItem(const char *Text);
+   virtual void OsdTextItem(const char *Text, bool Scroll);
+   virtual void OsdChannel(const char *Text);
+-  virtual void OsdProgramme(time_t PresentTime, const char *PresentTitle, const char *PresentSubtitle, time_t FollowingTime, const char *FollowingTitle, const char *FollowingSubtitle);
++//  virtual void OsdProgramme(time_t PresentTime, const char *PresentTitle, const char *PresentSubtitle, time_t FollowingTime, const char *FollowingTitle, const char *FollowingSubtitle);
+   };
+ 
+ 
+@@ -70,10 +70,8 @@ void cLcdFeed::ChannelSwitch(const cDevi
+   //syslog(LOG_INFO, "lcdproc: cLcdFeed::ChannelSwitch  %d %d", Device->CardIndex(), ChannelNumber);
+   if ( Device && Device->IsPrimaryDevice() ) {
+     if (ChannelNumber) { 
+-      LCDproc->SetLine(1,2," "); 
+-      LCDproc->SetLine(1,3," ");
+-      LCDproc->SetRunning(false,tr("Waiting for EPG info."), NULL); 
+       switched = true; 
++      LCDproc->SetChannelSwitch( (cDevice *) Device, ChannelNumber);
+     } else switched = false;
+     LCDproc->SetPrimaryDevice( (cDevice *) Device );
+   }
+@@ -188,31 +186,31 @@ void cLcdFeed::OsdChannel(const char *Te
+   switched=false; menumode=false; 
+ }
+ 
+-void cLcdFeed::OsdProgramme(time_t PresentTime, const char *PresentTitle, const char *PresentSubtitle, time_t FollowingTime, const char *FollowingTitle, const char *FollowingSubtitle)
+-{
+-  char buffer[25];
+-  struct tm tm_r;
+-  //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdProgramme");
+-  strftime(buffer, sizeof(buffer), "%R", localtime_r(&PresentTime, &tm_r));
+-  //syslog(LOG_INFO, "%5s %s", buffer, PresentTitle);
+-  //syslog(LOG_INFO, "%5s %s", "", PresentSubtitle);
+-  
+-
+-  if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
+-    LCDproc->SetRunning(false,buffer,PresentTitle,PresentSubtitle);
+-  else if (!isempty(PresentTitle)) LCDproc->SetRunning(false,buffer,PresentTitle);
+-  else LCDproc->SetRunning(false,tr("No EPG info available."), NULL); 
+-
+-
+-  strftime(buffer, sizeof(buffer), "%R", localtime_r(&FollowingTime, &tm_r));
+-  //syslog(LOG_INFO, "%5s %s", buffer, FollowingTitle);
+-  //syslog(LOG_INFO, "%5s %s", "", FollowingSubtitle);
+-  
+-  if ( (!isempty(FollowingTitle)) && (!isempty(FollowingSubtitle)) )
+-    LCDproc->SetRunning(true,buffer,FollowingTitle,FollowingSubtitle);
+-  else if (!isempty(FollowingTitle)) LCDproc->SetRunning(true,buffer,FollowingTitle);
+-  else LCDproc->SetRunning(true,tr("No EPG info available."), NULL); 
+-}
++// void cLcdFeed::OsdProgramme(time_t PresentTime, const char *PresentTitle, const char *PresentSubtitle, time_t FollowingTime, const char *FollowingTitle, const char *FollowingSubtitle)
++// {
++//   char buffer[25];
++//   struct tm tm_r;
++//   //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdProgramme");
++//   strftime(buffer, sizeof(buffer), "%R", localtime_r(&PresentTime, &tm_r));
++//   //syslog(LOG_INFO, "%5s %s", buffer, PresentTitle);
++//   //syslog(LOG_INFO, "%5s %s", "", PresentSubtitle);
++//   
++// 
++//   if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
++//     LCDproc->SetRunning(false,buffer,PresentTitle,PresentSubtitle);
++//   else if (!isempty(PresentTitle)) LCDproc->SetRunning(false,buffer,PresentTitle);
++//   else LCDproc->SetRunning(false,tr("No EPG info available."), NULL); 
++// 
++// 
++//   strftime(buffer, sizeof(buffer), "%R", localtime_r(&FollowingTime, &tm_r));
++//   //syslog(LOG_INFO, "%5s %s", buffer, FollowingTitle);
++//   //syslog(LOG_INFO, "%5s %s", "", FollowingSubtitle);
++//   
++//   if ( (!isempty(FollowingTitle)) && (!isempty(FollowingSubtitle)) )
++//     LCDproc->SetRunning(true,buffer,FollowingTitle,FollowingSubtitle);
++//   else if (!isempty(FollowingTitle)) LCDproc->SetRunning(true,buffer,FollowingTitle);
++//   else LCDproc->SetRunning(true,tr("No EPG info available."), NULL); 
++// }
+ 
+ // ---
+ 
+diff -rupbB ./lcd.c ../lcdproc-0.0.10.SHF-volume/lcd.c
+--- ./lcd.c	2008-05-27 02:13:45.000000000 +0200
++++ ../lcdproc-0.0.10.SHF-volume/lcd.c	2008-05-27 02:13:22.000000000 +0200
+@@ -277,6 +277,15 @@ void cLcd::SetWarning( const char *strin
+   }
+ }
+ 
++void cLcd::SetChannelSwitch(const cDevice *Device, int ChannelNumber){
++      cLcd::SetLine(1,2," ");
++      cLcd::SetLine(1,3," ");
++      cLcd::SetRunning(false,tr("Waiting for EPG info."), NULL);
++      cLcd::SetRunning(true,tr("Waiting for EPG info."), NULL);
++      epg=false;
++      epg_retry=MAX_EPG_RETRY;
++}
++
+ void cLcd::ShowVolume(unsigned int vol, bool muted ) {
+ if (!connected) return;
+   BeginMutualExclusion();
+@@ -712,9 +721,15 @@ void cLcd::Action(void) { // LCD output 
+ 
+     //  epg update
+ 
++  if ( !epg && epg_retry > 0 ) {
++     epg_retry-- ;
++     if ( ( epg_retry % 5 ) == 0 )  nextLcdUpdate=time(NULL)-10;
++  } else epg = true;
++
+ #ifdef OLDVDR
+ 
+     if ( time(NULL) > nextLcdUpdate ) {
++      epg=true;
+       const cEventInfo *Present = NULL;
+       cMutexLock MutexLock;
+       const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
+@@ -722,54 +737,99 @@ void cLcd::Action(void) { // LCD output 
+          const cSchedule *Schedule = Schedules->GetSchedule();
+          if (Schedule) {
+             const char *PresentTitle, *PresentSubtitle;
++
+             PresentTitle = NULL; PresentSubtitle = NULL;
+             if ((Present = Schedule->GetPresentEvent()) != NULL) {
+-               nextLcdUpdate=Present->GetTime()+Present->GetDuration();
++//               nextLcdUpdate=Present->GetTime()+Present->GetDuration();
+                PresentTitle = Present->GetTitle();
+                PresentSubtitle = Present->GetSubtitle();
+                if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
+                   SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
+                   else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
++	       else {
++		   SetRunning(false,tr("No EPG info available."), NULL);
++               }
+             } else
+                SetRunning(false,tr("No EPG info available."), NULL);
+-            if ((Present = Schedule->GetFollowingEvent()) != NULL)
+-              nextLcdUpdate=(Present->GetTime()<nextLcdUpdate)?Present->GetTime():nextLcdUpdate;
++
++	    Present = NULL; PresentTitle = NULL; PresentSubtitle = NULL;
++            if ((Present = Schedule->GetFollowingEvent()) != NULL) {
++//               nextLcdUpdate=Present->StartTime()+Present->Duration();
++               PresentTitle = Present->Title();
++               PresentSubtitle = Present->ShortText();
++               if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
++                  SetRunning(true,Present->GetTimeString(),PresentTitle,PresentSubtitle);
++               else if (!isempty(PresentTitle)) SetRunning(true,Present->GetTimeString(),PresentTitle);
++	       else {
++		   SetRunning(true,tr("No EPG info available."), NULL);
++		   epg=false;
+          }
++            } else {
++               SetRunning(true,tr("No EPG info available."), NULL);
++	       epg=false;
+       }
+-     if ( nextLcdUpdate <= time(NULL) )
+-         nextLcdUpdate=(time(NULL)/60)*60+60;
+-      else if ( nextLcdUpdate > time(NULL)+60 )
++
++//            if ((Present = Schedule->GetFollowingEvent()) != NULL)
++//              nextLcdUpdate=(Present->GetTime()<nextLcdUpdate)?Present->GetTime():nextLcdUpdate;
++         }
++      }
++//      if ( nextLcdUpdate <= time(NULL) )
++//          nextLcdUpdate=(time(NULL)/60)*60+60;
++//       else if ( nextLcdUpdate > time(NULL)+60 )
+          nextLcdUpdate=(time(NULL)/60)*60+60;
+     }
+ 
+ #else
+    
+     if ( time(NULL) > nextLcdUpdate ) { 
++      epg=true; 
+       cChannel *channel = Channels.GetByNumber(primaryDvbApi->CurrentChannel());
+       const cEvent *Present = NULL;
+       cSchedulesLock schedulesLock;
+       const cSchedules *Schedules = cSchedules::Schedules(schedulesLock); 
+       if (Schedules) {
+          const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID()); 
++ 
+          if (Schedule) { 
+             const char *PresentTitle, *PresentSubtitle;
++
+             PresentTitle = NULL; PresentSubtitle = NULL;
+             if ((Present = Schedule->GetPresentEvent()) != NULL) {
+-               nextLcdUpdate=Present->StartTime()+Present->Duration();
++//               nextLcdUpdate=Present->StartTime()+Present->Duration();
+                PresentTitle = Present->Title();
+                PresentSubtitle = Present->ShortText();
+                if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
+                   SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
+                   else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
+-            } else 
++	       else {
+                SetRunning(false,tr("No EPG info available."), NULL); 
+-            if ((Present = Schedule->GetFollowingEvent()) != NULL)
+-              nextLcdUpdate=(Present->StartTime()<nextLcdUpdate)?Present->StartTime():nextLcdUpdate;
+          }
++            } else {
++               SetRunning(false,tr("No EPG info available."), NULL);
+       }
+-     if ( nextLcdUpdate <= time(NULL) )
+-         nextLcdUpdate=(time(NULL)/60)*60+60;
+-      else if ( nextLcdUpdate > time(NULL)+60 )
++
++	    Present = NULL; PresentTitle = NULL; PresentSubtitle = NULL;
++            if ((Present = Schedule->GetFollowingEvent()) != NULL) {
++//               nextLcdUpdate=Present->StartTime()+Present->Duration();
++               PresentTitle = Present->Title();
++               PresentSubtitle = Present->ShortText();
++               if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
++                  SetRunning(true,Present->GetTimeString(),PresentTitle,PresentSubtitle);
++               else if (!isempty(PresentTitle)) SetRunning(true,Present->GetTimeString(),PresentTitle);
++	       else {
++		   SetRunning(true,tr("No EPG info available."), NULL);
++               }
++            } else {
++               SetRunning(true,tr("No EPG info available."), NULL);
++	    }
++
++//            if ((Present = Schedule->GetFollowingEvent()) != NULL)
++//              nextLcdUpdate=(Present->StartTime()<nextLcdUpdate)?Present->StartTime():nextLcdUpdate;
++         }
++      }
++//       if ( nextLcdUpdate <= time(NULL) )
++//          nextLcdUpdate=(time(NULL)/60)*60+60;
++//       else if ( nextLcdUpdate > time(NULL)+60 )
+          nextLcdUpdate=(time(NULL)/60)*60+60;
+     }  
+ 
+diff -rupbB ./lcd.h ../lcdproc-0.0.10.SHF-volume/lcd.h
+--- ./lcd.h	2008-05-27 02:11:55.000000000 +0200
++++ ../lcdproc-0.0.10.SHF-volume/lcd.h	2008-05-27 01:03:23.000000000 +0200
+@@ -14,6 +14,7 @@
+ #define LCDMAXWID 40
+ #define LCDMAXCARDS 4
+ #define LCDMAXFULLSTRING 1024
++#define MAX_EPG_RETRY 45 // : 8 = sec
+ #define MAX_LCDd_dead 12 // : 8 = sec
+ 
+ class cLcd : public cThread {
+@@ -40,6 +41,7 @@ class cLcd : public cThread {
+     void SetTitle( const char *string);
+     void SetMain( unsigned int n, const char *string);
+     void SetHelp( unsigned int n, const char *Red, const char *Green, const char *Yellow, const char *Blue);
++    void SetChannelSwitch(const cDevice *Device, int ChannelNumber);
+     void SetStatus( const char *string);
+     void SetWarning( const char *string);
+     void ShowVolume(unsigned int vol, bool muted ); 
+@@ -65,7 +67,9 @@ class cLcd : public cThread {
+     char host[100];             // 100 should be sufficient, I think.
+     unsigned int port;
+     bool connected;
++    bool epg;
+     unsigned int LCDd_dead;
++    int epg_retry;
+     struct StateData ThreadStateData;
+     time_t LastProgress;
+     cMutex CriticalArea;

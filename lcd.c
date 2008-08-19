@@ -30,9 +30,16 @@
 // public:
 
 cLcd::cLcd() {
-  int i,j;
-  connected=false; ThreadStateData.showvolume=false; ThreadStateData.newscroll=false; sock=wid=hgt=cellwid=cellhgt=0;closing = false;
-  replayDvbApi=NULL; primaryDvbApi=NULL;
+  int i, j;
+  connected = false; 
+  suspended = false;
+  ThreadStateData.showvolume = false; 
+  ThreadStateData.newscroll = false; 
+  sock = wid = hgt = cellwid = cellhgt = 0;
+  closing = false;
+  host = NULL; 
+  replayDvbApi = NULL; 
+  primaryDvbApi = NULL;
   
   for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
     ThreadStateData.lcdbuffer[i][j][0]=' '; 
@@ -55,33 +62,52 @@ cLcd::cLcd() {
 cLcd::~cLcd() {
   if (connected) { cLcd::Close(); }  
   if (conv) { delete(conv); }
+  if (host) { free(host); }
 }
 
-bool cLcd::Connect( char *host, unsigned int port ) {
+bool cLcd::Connect( const char *host, unsigned int port ) {
+  asprintf(&(this->host), "%s", host);
+  this->port = port;
+  cLcd::Open();
+
+  cLcd::Start(); SetThreadState(Title); // Start thread
+  return true;
+}
+
+bool cLcd::Open() {
 
   char istring[1024];
   unsigned int i=0;
 
   if ( ( sock = sock_connect(host,port) ) < 1) {
+    syslog(LOG_INFO, "could not establish connection to LCDd at %s:%d.",host,port);
     return connected=false;
   }
 
   ToggleMode=false;
   sock_send_string(sock, "hello\n"); 
   usleep(500000); // wait for a connect message  
+  memset(istring,0,1024);
   sock_recv(sock, istring, 1024);
 
-  if ( strncmp("connect LCDproc",istring,15) != 0 ) { cLcd::Close(); return connected=false; }
+  if ( strncmp("connect LCDproc",istring,15) != 0 ) {
+    syslog(LOG_INFO, "LCDd at %s:%d does not respond.",host,port);
+    cLcd::Close(); 
+    return connected=false;
+  }
 
-  while ( (strncmp("lcd",istring+i,3) != 0 ) && (i<(strlen(istring)-5)) ) i++;  
+  while ( ((int)i<((int)strlen(istring)-5)) && (strncmp("lcd",istring+i,3) != 0 ) ) i++;
 
-  if (sscanf( istring+i,"lcd wid %d hgt %d cellwid %d cellhgt %d" 
-      , &wid, &hgt, &cellwid, &cellhgt) ) connected=true;
+  if (sscanf(istring+i,"lcd wid %d hgt %d cellwid %d cellhgt %d", &wid, &hgt, &cellwid, &cellhgt)) connected=true;
 
   if ((hgt < 4 ) || (wid < 16)) connected = false; // 4 lines are needed, may work with more than 4 though
-  if ( (hgt==2) && (wid>31) ) { connected = true; wid=wid/2; LineMode=0; }   // 2x32-2x40 
+  if ((hgt==2) && (wid>31)) { connected = true; wid=wid/2; LineMode=0; }   // 2x32-2x40 
   else if ( (hgt==2) && (wid>15) && (wid<32) ) { connected = true; ToggleMode=true; }  // 2x16-2x31
-  if (!connected) { cLcd::Close(); return connected; }
+  if (!connected) { 
+    syslog(LOG_INFO, "Minimum Display Size is 2x16. Your LCD is to small, sorry.");
+    cLcd::Close();
+    return connected;
+  }
 
   sock_send_string(sock,"screen_add VDR\n"); sock_recv(sock, istring, 1024);
   sock_send_string(sock,"screen_set VDR -heartbeat off\n"); sock_recv(sock, istring, 1024);
@@ -97,8 +123,7 @@ bool cLcd::Connect( char *host, unsigned int port ) {
     sock_send_string(sock,istring); 
     sock_recv(sock, istring, 1024);
   }
-
-  cLcd::Start(); SetThreadState(Title); // Start thread
+  syslog(LOG_INFO, "connection to LCDd at %s:%d established.",host,port);
   return connected;
 }
 
@@ -107,14 +132,41 @@ void cLcd::Close() {
   fprintf(stderr,"Close Called \n");
   if (connected) {
    closing = true;
-   sock_send_string(sock,"output off\n");
+   sock_send_string(sock,"screen_del VDR\n");
    sock_recv(sock, istring, 1024);
-   sleep(1);
-  sock_close(sock); 
+   usleep(1000000);
+   sock_close(sock);
+   usleep(500000);
   }else{
-    fprintf(stderr,"Not Connected !!! \n");
+   fprintf(stderr,"Not Connected !!! \n");
   }
   connected=false; sock=wid=hgt=cellwid=cellhgt=0; 
+}
+
+bool cLcd::Suspend() {
+  fprintf(stderr,"Suspend Called \n");
+  if (connected) {
+   suspended = true;
+   connected=false;
+   sock_send_string(sock,"screen_set VDR -priority hidden\n");
+   return true;
+  }else{
+   fprintf(stderr,"Not Connected !!! \n");
+   return false;
+  }
+}
+
+bool cLcd::Resume() {
+  fprintf(stderr,"Resume Called \n");
+  if (suspended) {
+   connected=true;
+   suspended = false;
+   sock_send_string(sock,"screen_set VDR -priority info\n");
+   return true;
+  }else{
+   fprintf(stderr,"Not suspended !!! \n");
+   return false;
+  }
 }
 
 const char* cLcd::Convert(const char *s) {
@@ -296,7 +348,7 @@ void cLcd::SetWarning( const char *string) {
   }
 }
 
-void cLcd::ShowVolume(unsigned int vol, bool absolute ) {
+void cLcd::ShowVolume(int vol, bool absolute ) {
 if (!connected) return;
   BeginMutualExclusion();
     if (absolute)
@@ -314,7 +366,7 @@ if (!connected) return;
   } else {
     if (hgt==2) {
       if (ToggleMode) {
-	cLcd::SetLine(Vol,0,"|---|---|---|---|---|---|---|---|---|---");
+	    cLcd::SetLine(Vol,0,tr("Volume "));
         cLcd::SetLine(Vol,1," ");	
       } else {	      
         cLcd::SetLine(Vol,0,"|---|---|---|---|---|---|---|---|---|---");
@@ -663,13 +715,15 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
 }
 
 #define WakeUpCycle 125000 // us 
+#define WorkString_Length 1024
 
 void cLcd::Action(void) { // LCD output thread
-  unsigned int i,j, barx=1, bary=1, barl=0, ScrollState=0, ScrollLine=1, lasttitlelen=0; 
-  int Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight,lastPrio, lastPrioN, keycnt=0;
+  unsigned int i,j, barx, bary, barl, ScrollState, ScrollLine, lasttitlelen;
+  int Current, Total, scrollpos, scrollcnt, scrollwaitcnt, lastAltShift, lastBackLight,lastPrio, keycnt;
   struct timeval now, voltime;
-  char workstring[1024], lastkeypressed='\0';
-  cLcd::ThreadStates PrevState=Menu;
+  char workstring[WorkString_Length];
+  char lastkeypressed='\0';  
+  cLcd::ThreadStates PrevState = Menu;
   struct cLcd::StateData OutStateData;
   bool Lcddirty[LCDMAXSTATES][4];
   bool LcdShiftkeyPressed=false;
@@ -680,423 +734,512 @@ void cLcd::Action(void) { // LCD output thread
   // LCR
   static int lcrCycle;
   
-  // backlight init 
-  if ((lastBackLight=LcdSetup.BackLight))
-    sock_send_string(sock,"backlight on\n");
-  else
-    sock_send_string(sock,"backlight off\n");
+  time_t nextLcdUpdate, lastUserActivity;
 
-  // prio init
-  if ( (lastPrio=LcdSetup.SetPrio) ) { 
-    if (LcdSetup.SetPrio == 1)  
-      sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioN );
-    else 
-      sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioH );
-    sock_send_string(sock,priostring);
-  } 
-  lastPrioN=LcdSetup.ClientPrioN;
-      
-  syslog(LOG_INFO, "LCD output thread started (pid=%d), display size: %dx%d", getpid(),hgt,wid);
-  cLcd::Write(LcdSetup.ShowTime?1:4," Welcome  to  V D R\0"); 
-  cLcd::Write(LcdSetup.ShowTime?2:3,"--------------------\0");
-  cLcd::Write(LcdSetup.ShowTime?3:1,"Video Disk Recorder\0");
-  cLcd::Write(LcdSetup.ShowTime?4:2,"Version: "VDRVERSION"\0");
+  while (true) {  // outer (reconnect) loop 
+	  barx=1; bary=1; barl=0; ScrollState=0; ScrollLine=1; lasttitlelen=0;
+	  Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight=0 ,lastPrio=0, keycnt=0;
+	  lastkeypressed='\0';
+	  PrevState=Menu;
+	  OutStateData.State=Title;
+	  LcdShiftkeyPressed=false;
+	  LCDd_dead=0;
 
-  // Output init
-  if (LcdSetup.OutputNumber > 0){
-    char lcdCommand[100];
-
-    for (int o=0; o <  LcdSetup.OutputNumber; o++){
-         sprintf(lcdCommand,"output %d\n",1 << o);
-         sock_send_string(sock,lcdCommand);
-         usleep(150000);
-    }
-    for (int o= LcdSetup.OutputNumber-1; o >= 0; o--){
-         sprintf(lcdCommand,"output %d\n",1 << o);
-         sock_send_string(sock,lcdCommand);
-         usleep(150000);
-    }
-    sprintf(lcdCommand,"output on\n");
-    sock_send_string(sock,lcdCommand);
-    usleep(500000);
-    sprintf(lcdCommand,"output off\n");
-    sock_send_string(sock,lcdCommand);
-  }
-
-
-  sleep(3); bool volume=false; OutStateData.showvolume=false; ThreadStateData.showvolume=false;
-  
-  if (primaryDvbApi) for (int k=0; k<primaryDvbApi->NumDevices() ; k++) SetCardStat(k,1); 
-  
-  voltime.tv_sec=0;
-  for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) Lcddirty[i][j]=true;
-  time_t nextLcdUpdate = 0; // trigger first update immediately
-  while (true) { // main loop, wakes up every WakeUpCycle, any output to LCDd is done here  
-    gettimeofday(&now,NULL);
-
-    //  epg update
-  if (channelSwitched) {
-    channelSwitched = false;
-    nextLcdUpdate = 0; //trigger next epg update
-  }
-
-    if ( time(NULL) > nextLcdUpdate ) { 
-      cChannel *channel = Channels.GetByNumber(primaryDvbApi->CurrentChannel());
-      const cEvent *Present = NULL;
-      cSchedulesLock schedulesLock;
-      const cSchedules *Schedules = cSchedules::Schedules(schedulesLock); 
-      if (Schedules) {
-         const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID()); 
-         if (Schedule) { 
-            const char *PresentTitle, *PresentSubtitle;
-            PresentTitle = NULL; PresentSubtitle = NULL;
-            if ((Present = Schedule->GetPresentEvent()) != NULL) {
-               nextLcdUpdate=Present->StartTime()+Present->Duration();
-               PresentTitle = Present->Title();
-               PresentSubtitle = Present->ShortText();
-               if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
-                  SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
-                  else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
-            } else 
-               SetRunning(false,tr("No EPG info available."), NULL); 
-            if ((Present = Schedule->GetFollowingEvent()) != NULL)
-              nextLcdUpdate=(Present->StartTime()<nextLcdUpdate)?Present->StartTime():nextLcdUpdate;
-            rtcycle = 10; // RT
-	    lcrCycle = 10; // LCR
-         }
-      }
-     if ( nextLcdUpdate <= time(NULL) )
-         nextLcdUpdate=(time(NULL)/60)*60+60;
-    }  
-
-    // get&display Radiotext
-    if (++rtcycle > 10) {	// every 10 times
-        cPlugin *p;
-	p = cPluginManager::CallFirstService("RadioTextService-v1.0", NULL);
-	if (p) {
-	    RadioTextService_v1_0 rtext;
-    	    if (cPluginManager::CallFirstService("RadioTextService-v1.0", &rtext)) {
-    		if (rtext.rds_info == 2 && strstr(rtext.rds_title, "---") == NULL) {
-		    char timestr[20];
-    		    sprintf(timestr, "%02d:%02d", rtext.title_start->tm_hour, rtext.title_start->tm_min);
-        	    SetRunning(false, timestr, rtext.rds_title, rtext.rds_artist);
-		    }
-		else if (rtext.rds_info > 0) {
-        	    SetRunning(false, NULL, rtext.rds_text);
-		    }
-		}
-	    }
-	rtcycle = 0;
-	//printf("lcdproc - get Radiotext ...\n");
-     }
-     // get&display LcrData
-     if (lcrCycle++ == 10) // every 10 times
-     {
-         lcrCycle = 0;
-         cPlugin *p;
-         p = cPluginManager::CallFirstService("LcrService-v1.0", NULL);
-         if (p)
-         {
-             LcrService_v1_0 lcrData;
-             if (cPluginManager::CallFirstService("LcrService-v1.0", &lcrData))
-             {
-                 if ( strstr( lcrData.destination, "---" ) == NULL )
-                 {
-                   SetRunning(false, (const char *)lcrData.destination, (const char *)lcrData.price, (const char         *)lcrData.pulse);
-                   nextLcdUpdate = 0; //trigger next epg update
-                 }
-             }
-         }
-     }
-
-    // replaying
-    
-    if ( (now.tv_usec < WakeUpCycle) && (replayDvbApi) ) {
-      char tempbuffer[16];
-      replayDvbApi->GetIndex(Current, Total, false); Total=(Total==0)?1:Total;
-      sprintf(tempbuffer,IndexToHMSF(Total));
-      SetProgress(IndexToHMSF(Current),tempbuffer, (100 * Current) / Total);
-    } 
-
-    
-    
-    // copy 
-    
-    BeginMutualExclusion();  // all data needed for output are copied here  
-      memcpy(&OutStateData,&ThreadStateData, sizeof (cLcd::StateData));
-      ThreadStateData.showvolume=false;
-      if (ThreadStateData.newscroll) { scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false; } 
-      for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
-	ThreadStateData.lcddirty[i][j]=false;
-        Lcddirty[i][j]= Lcddirty[i][j] || OutStateData.lcddirty[i][j];	
-      }	
-    EndMutualExclusion();
-
-    // scroller
-    
-    if ( (OutStateData.State==PrevState) && ( OutStateData.State == Replay || OutStateData.State == Menu || OutStateData.State == Title ) ) {
-      switch (OutStateData.State) {
-	case Replay:
-	  ScrollState=LCDREPLAY; ScrollLine=1;	
-	break;  	
-	case Menu:
-	  ScrollState=LCDMENU;   ScrollLine=1;	
-	break;  	
-	case Title:
-	  ScrollState=LCDTITLE;
-	  if (!ToggleMode) {
-	    ScrollLine=2;
-	  } else {
-	    ScrollLine=1;
-	    if (LcdSetup.ShowTime) {
-	      char tmpbuffer[1024];
-	      strcpy(tmpbuffer,OutStateData.lcdbuffer[LCDTITLE][1]);
-	      strcat(tmpbuffer," * ");
-	      strcat(tmpbuffer, OutStateData.lcdfullbuffer[LCDTITLE]);
-	      strcpy(OutStateData.lcdfullbuffer[LCDTITLE],tmpbuffer);
-            }
-            strncpy(OutStateData.lcdbuffer[LCDTITLE][1],OutStateData.lcdfullbuffer[LCDTITLE],wid);
+	  while (! connected) {
+		  sleep(120);
+		  Open();
 	  }
-          if ( strlen(OutStateData.lcdfullbuffer[LCDTITLE]) != lasttitlelen ) {
-	    lasttitlelen=strlen(OutStateData.lcdfullbuffer[LCDTITLE]);
-            scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false;	    
-          }		  
-	break;  	
-        default:  
-        break; 
-      }
-      
-      if ( ( strlen(OutStateData.lcdfullbuffer[ScrollState]) > (((ToggleMode)?1:2)*wid+3) ) 
-  	    && ( (scrollpos) || !(scrollwaitcnt=(scrollwaitcnt+1)%LcdSetup.Scrollwait) ) ) {
-	if ( !(scrollcnt=(scrollcnt+1)%LcdSetup.Scrollspeed)  ) {      
-          scrollpos=(scrollpos+1)%strlen(OutStateData.lcdfullbuffer[ScrollState]);
-          if  ( scrollpos==1 ) scrollwaitcnt=0;
-          for (i=0; i<wid; i++) {
-	    OutStateData.lcdbuffer[ScrollState][ScrollLine][i]=
-              OutStateData.lcdfullbuffer[ScrollState][(scrollpos+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
-          } 
-          OutStateData.lcdbuffer[ScrollState][ScrollLine][wid]='\0';
-          for (i=0; i<wid; i++) {
-	    OutStateData.lcdbuffer[ScrollState][ScrollLine+1][i]=
-	      OutStateData.lcdfullbuffer[ScrollState][(scrollpos+wid+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
-          } 
-          OutStateData.lcdbuffer[ScrollState][ScrollLine+1][wid]='\0';
-          Lcddirty[ScrollState][ScrollLine]=Lcddirty[ScrollState][ScrollLine+1]=true; 
-	}
-      } else if (!LcdSetup.ShowTime) Lcddirty[LCDTITLE][1]=true;
-    }
 
-    // volume  
-   
-    if (OutStateData.showvolume) gettimeofday(&voltime,NULL);
-    if ( voltime.tv_sec != 0) { // volume
-      if (  ((now.tv_sec - voltime.tv_sec)*1000000+now.tv_usec-voltime.tv_usec ) > (100000*LcdSetup.VolumeKeep)  ) {
-	voltime.tv_sec=0;
-        OutStateData.barx=1; OutStateData.bary=1; OutStateData.barl=0; volume=false;
-      } else {
-	volume=true;      
-	OutStateData.barx=1; OutStateData.bary=((hgt==2)?2:3);
-	OutStateData.barl=(cellwid*((hgt==2)?2:1)*wid*OutStateData.volume)/255;      
-      }	      
-    }	    
-    if (volume) OutStateData.State = Vol;
+	  // backlight init 
+	  if ((lastBackLight=LcdSetup.BackLight))
+		  sock_send_string(sock,"backlight on\n");
+	  else
+		  sock_send_string(sock,"backlight off\n");
 
-    // prio
-    
-    
-    // modes
-    
-    switch (OutStateData.State) {
+	  // prio init
+	  if (LcdSetup.SetPrio) {
+		  if (LcdSetup.SetPrio == 1){
+			  sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioN );
+			  lastPrio=LcdSetup.ClientPrioN;
+		  } else {
+			  sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioH );
+			  lastPrio=LcdSetup.ClientPrioH;
+		  }
 
-      case Menu: // display menu = 0
-        LineMode=1; if (!volume) { OutStateData.barx=1; OutStateData.bary=1; OutStateData.barl=0; }
-        if (PrevState != Menu) for (i=0;i<4;i++) Lcddirty[LCDMENU][i]=true;
-        for (i=0;i<4;i++) if (Lcddirty[LCDMENU][i]) {
-          cLcd::Write(i+1,OutStateData.lcdbuffer[LCDMENU][i]);
-          Lcddirty[LCDMENU][i]=false;
-        }        
-        PrevState=Menu; 
-      break;
+		  sock_send_string(sock,priostring);
+	  } 
+	  lastUserActivity=time(NULL);
 
-      case Title: // Display 'titlescsreen' = 1
-        LineMode=0;
-	if ( (LcdSetup.ShowTime) && ( (now.tv_usec < WakeUpCycle) || (PrevState != Title) ) ) { 
-          cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
-          cLcd::Write(1,workstring);
-        }
-        if (PrevState != Title) for (i=LcdSetup.ShowTime?1:0;i<4;i++) Lcddirty[LCDTITLE][i]=true;
-        for (i=LcdSetup.ShowTime?1:0;i<4;i++) if (Lcddirty[LCDTITLE][i]) { 
-          cLcd::Write(i+1,OutStateData.lcdbuffer[LCDTITLE][i]); 
-          Lcddirty[LCDTITLE][i]=false; 
-        }
-        PrevState = Title;
-      break;
+	  syslog(LOG_INFO, "LCD output thread started (pid=%d), display size: %dx%d", getpid(),hgt,wid);
+	  cLcd::Write(LcdSetup.ShowTime?1:4," Welcome  to  V D R\0"); 
+	  cLcd::Write(LcdSetup.ShowTime?2:3,"--------------------\0");
+	  cLcd::Write(LcdSetup.ShowTime?3:1,"Video Disk Recorder\0");
+	  cLcd::Write(LcdSetup.ShowTime?4:2,"Version: "VDRVERSION"\0");
 
-      case Replay: // Display date/time during replaying = 2
-        LineMode=1;
-        if ( !ToggleMode && ((now.tv_usec < WakeUpCycle) || (PrevState != Replay)) ) { 
-          cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
-          cLcd::Write(1,workstring);
-        } 
-        if (PrevState != Replay) { scrollpos=0; for (i=1;i<4;i++) Lcddirty[LCDREPLAY][i]=true; }
-        for (i=(ToggleMode)?0:1;i<4;i++) if (Lcddirty[LCDREPLAY][i]) { 
-          cLcd::Write(i+1,OutStateData.lcdbuffer[LCDREPLAY][i]); 
-          Lcddirty[LCDREPLAY][i]=false; 
-        }
-        PrevState = Replay;
-      break;
+	  // Output init
+	  if (LcdSetup.OutputNumber > 0){
+		  char lcdCommand[100];
 
-      case Misc: // Display messages  = 3
-        LineMode=0;
-        if (PrevState != Misc) for (i=0;i<4;i++) Lcddirty[LCDMISC][i]=true;
-        for (i=0;i<4;i++) if (Lcddirty[LCDMISC][i]) {
-          cLcd::Write(i+1,OutStateData.lcdbuffer[LCDMISC][i]);
-          Lcddirty[LCDMISC][i]=false;
-        }
-        PrevState = Misc;
-      break;
+		  for (int o=0; o <  LcdSetup.OutputNumber; o++){
+			  sprintf(lcdCommand,"output %d\n",1 << o);
+			  sock_send_string(sock,lcdCommand);
+			  usleep(150000);
+		  }
+		  for (int o= LcdSetup.OutputNumber-1; o >= 0; o--){
+			  sprintf(lcdCommand,"output %d\n",1 << o);
+			  sock_send_string(sock,lcdCommand);
+			  usleep(150000);
+		  }
+		  sprintf(lcdCommand,"output on\n");
+		  sock_send_string(sock,lcdCommand);
+		  usleep(500000);
+		  sprintf(lcdCommand,"output off\n");
+		  sock_send_string(sock,lcdCommand);
+	  }
 
-      case Vol: // Display Volume = 4
-        LineMode=0;
-        if (PrevState != Vol) for (i=0;i<4;i++) Lcddirty[LCDVOL][i]=true;
-        for (i=0;i<4;i++) if (Lcddirty[LCDVOL][i]) {
-          cLcd::Write(i+1,OutStateData.lcdbuffer[LCDVOL][i]);
-          Lcddirty[LCDVOL][i]=false;
-        }
-        PrevState = Vol;
-      break;
-      
-      default: // quite impossible :) 
-      break;
-    }
 
-    // bargraph
-    if ( (OutStateData.barx != barx) || (OutStateData.bary != bary) || (OutStateData.barl != barl) ) {
-      sprintf(workstring,"widget_set VDR prbar %d %d %d\n",OutStateData.barx,OutStateData.bary,OutStateData.barl);
-      sock_send_string(sock,workstring);
-      barx=OutStateData.barx; bary=OutStateData.bary; barl=OutStateData.barl;          
-    }
+	  sleep(3); bool volume=false; OutStateData.showvolume=false; ThreadStateData.showvolume=false;
 
-    // backlight
-    
-    if ( lastBackLight != LcdSetup.BackLight) {
-      lastBackLight=LcdSetup.BackLight;
-      if (lastBackLight)
-	sock_send_string(sock,"backlight on\n");
-      else
-	sock_send_string(sock,"backlight off\n");
-    }	    
-    
-    // keys
-    
-    if ( LcdMaxKeys && (lastAltShift != LcdSetup.AltShift) ) {
-      lastAltShift=LcdSetup.AltShift;
-      if (lastAltShift)
-	sock_send_string(sock,"screen_set VDR -heartbeat slash\n");
-      else
-	sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
-    }	    
-    
-    
-    if ( !(keycnt=(keycnt+1)%4) ) lastkeypressed='\0';
-    
-    workstring[0]='\0'; sock_recv(sock, workstring, 1023); workstring[1024]='\0';
-    //if (workstring[0] != '\0') syslog(LOG_INFO, "%s",  workstring);	  
-    if ( LcdMaxKeys && ( strlen(workstring) > 4 ) ) {
-      for (i=0; i < (strlen(workstring)-4); i++ ) {	    
-	if (workstring[i]=='k' && workstring[i+1]=='e' && workstring[i+2]=='y' 
-			       && workstring[i+3]==' ' && workstring[i+4]!=lastkeypressed ) {
-          lastkeypressed=workstring[i+4];		
-	  for (j=0; j<LcdMaxKeys && workstring[i+4]!=LcdUsedKeys[j]; j++ ) {}
-	  if (workstring[i+4] == LcdShiftKey) {
-	    LcdShiftkeyPressed = ! LcdShiftkeyPressed;
-	    if (LcdShiftkeyPressed)
-	       sock_send_string(sock,"screen_set VDR -heartbeat on\n");
-	    else
-	       sock_send_string(sock,"screen_set VDR -heartbeat off\n");
-          }		  
-	  if ( (workstring[i+4] != LcdShiftKey) ) {
-            if (LcdShiftkeyPressed) {		  
-	      //syslog(LOG_INFO, "shiftkey  pressed: %c %d",  workstring[i+4],j);
-	      cRemote::Put(LcdShiftMap[j]);
-	      LcdShiftkeyPressed=false;
-	      sock_send_string(sock,"screen_set VDR -heartbeat off\n");
-	    } else {
-              //syslog(LOG_INFO, "normalkey pressed: %c %d",  workstring[i+4],j);
-	      cRemote::Put(LcdNormalMap[j]);
-            }	    
-          }		  
-	}       	
-      }
-    }
-    
-   // Output
+	  if (primaryDvbApi) for (int k=0; k<primaryDvbApi->NumDevices() ; k++) SetCardStat(k,1); 
 
-    int OutValue = 0;
-    char lcdCommand[100];
-    if (!closing){
-     if (LcdSetup.OutputNumber > 0){
-     	  for (int o=0; o <  LcdSetup.OutputNumber; o++){
-           switch(LcdSetup.OutputFunction[o]){
-             case 0: // Off
-               break;
-             case 1: // On
-               OutValue += 1 << o;
-               break;
-             case 2: // Recording DVB 1
-               if (OutStateData.CardStat[0] == 2)
-                 OutValue += 1 << o;
-               break;
-             case 3: // Recording DVB 2
-               if (OutStateData.CardStat[1] == 2)
-                 OutValue += 1 << o;
-               break;
-             case 4: // Recording DVB 3
-               if (OutStateData.CardStat[2] == 2)
-                 OutValue += 1 << o;
-               break;
-             case 5: // Recording DVB 4
-               if (OutStateData.CardStat[3] == 2)
-                 OutValue += 1 << o;
-               break;
-             case 6: // Replay
-               if (OutStateData.State == Replay)
-                 OutValue += 1 << o;
-               break;
-             case 7: // DVD
-               if ( (OutStateData.State == Replay) && (!strncmp(OutStateData.lcdfullbuffer[LCDREPLAY],"DVD", 3)))
-                 OutValue += 1 << o;
-               break;
-             case 8: // Mplayer
-               break;
-             case 9: // MP3
-	       if ( (OutStateData.State == Replay) && OutStateData.lcdfullbuffer[LCDREPLAY][0]=='[' &&
-	             OutStateData.lcdfullbuffer[LCDREPLAY][3]==']' && 
-		    (OutStateData.lcdfullbuffer[LCDREPLAY][1]=='.' || OutStateData.lcdfullbuffer[LCDREPLAY][1]=='L' ) &&
-		    (OutStateData.lcdfullbuffer[LCDREPLAY][2]=='.' || OutStateData.lcdfullbuffer[LCDREPLAY][2]=='S' )
-		   )
-		 OutValue += 1 << o;     
-               break;
-             case 10: // Mplayer + MP3
-                      // Until I find a better solution any replay that is not a DVD is flagged as Mplayer-Mp3
-               if ( (OutStateData.State == Replay) && (strncmp(OutStateData.lcdfullbuffer[LCDREPLAY],"DVD",3))!= 0)
-                 OutValue += 1 << o;
-               break;
-             case 11: // User1
-               break;
-             case 12: // User2
-               break;
-             case 13: // User3
-               break;
-             default:
-             ;
-           }
-         }
-         sprintf(lcdCommand,"output %d\n",OutValue);
-         sock_send_string(sock,lcdCommand);
-     }
-    }
-    usleep(WakeUpCycle-(now.tv_usec%WakeUpCycle)); // sync to systemtime for nicer time output 
+	  voltime.tv_sec=0;
+	  for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) Lcddirty[i][j]=true;
+	  nextLcdUpdate = 0; // trigger first update immediately
+	  while (true) { // main loop, wakes up every WakeUpCycle, any output to LCDd is done here  
+		  gettimeofday(&now,NULL);
+
+		  //  epg update
+		  if (channelSwitched) {
+			  channelSwitched = false;
+			  nextLcdUpdate = 0; //trigger next epg update
+		  }
+
+		  if ( time(NULL) > nextLcdUpdate ) { 
+			  cChannel *channel = Channels.GetByNumber(primaryDvbApi->CurrentChannel());
+			  const cEvent *Present = NULL;
+			  cSchedulesLock schedulesLock;
+			  const cSchedules *Schedules = cSchedules::Schedules(schedulesLock); 
+			  if (Schedules) {
+				  const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID()); 
+				  if (Schedule) { 
+					  const char *PresentTitle, *PresentSubtitle;
+					  PresentTitle = NULL; PresentSubtitle = NULL;
+					  if ((Present = Schedule->GetPresentEvent()) != NULL) {
+						  nextLcdUpdate=Present->StartTime()+Present->Duration();
+						  PresentTitle = Present->Title();
+						  PresentSubtitle = Present->ShortText();
+						  if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
+							  SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
+						  else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
+					  } else 
+						  SetRunning(false,tr("No EPG info available."), NULL); 
+					  if ((Present = Schedule->GetFollowingEvent()) != NULL)
+						  nextLcdUpdate=(Present->StartTime()<nextLcdUpdate)?Present->StartTime():nextLcdUpdate;
+						  rtcycle = 10; // RT
+						  lcrCycle = 10; // LCR
+				  }
+			  }
+			  if ( nextLcdUpdate <= time(NULL) )
+				  nextLcdUpdate=(time(NULL)/60)*60+60;
+		  }  
+
+		  // get&display Radiotext
+		  if (++rtcycle > 10) {	// every 10 times
+			  cPlugin *p;
+			  p = cPluginManager::CallFirstService("RadioTextService-v1.0", NULL);
+			  if (p) {
+				  RadioTextService_v1_0 rtext;
+				  if (cPluginManager::CallFirstService("RadioTextService-v1.0", &rtext)) {
+					  if (rtext.rds_info == 2 && strstr(rtext.rds_title, "---") == NULL) {
+						  char timestr[20];
+						  sprintf(timestr, "%02d:%02d", rtext.title_start->tm_hour, rtext.title_start->tm_min);
+						  SetRunning(false, timestr, rtext.rds_title, rtext.rds_artist);
+					  }
+					  else if (rtext.rds_info > 0) {
+						  SetRunning(false, NULL, rtext.rds_text);
+					  }
+				  }
+			  }
+			  rtcycle = 0;
+			  //printf("lcdproc - get Radiotext ...\n");
+		  }
+		  // get&display LcrData
+		  if (lcrCycle++ == 10) // every 10 times
+		  {
+			  lcrCycle = 0;
+			  cPlugin *p;
+			  p = cPluginManager::CallFirstService("LcrService-v1.0", NULL);
+			  if (p)
+			  {
+				  LcrService_v1_0 lcrData;
+				  if (cPluginManager::CallFirstService("LcrService-v1.0", &lcrData))
+				  {
+					  if ( strstr( lcrData.destination, "---" ) == NULL )
+					  {
+						  SetRunning(false, (const char *)lcrData.destination, (const char *)lcrData.price, (const char         *)lcrData.pulse);
+						  nextLcdUpdate = 0; //trigger next epg update
+					  }
+				  }
+			  }
+		  }
+
+		  // replaying
+
+		  if ( (now.tv_usec < WakeUpCycle) && (replayDvbApi) ) {
+			  char tempbuffer[16];
+			  replayDvbApi->GetIndex(Current, Total, false); Total=(Total==0)?1:Total;
+			  sprintf(tempbuffer,IndexToHMSF(Total));
+			  SetProgress(IndexToHMSF(Current),tempbuffer, (100 * Current) / Total);
+		  } 
+
+
+
+		  // copy 
+
+		  BeginMutualExclusion();  // all data needed for output are copied here  
+		  memcpy(&OutStateData,&ThreadStateData, sizeof (cLcd::StateData));
+		  ThreadStateData.showvolume=false;
+		  if (ThreadStateData.newscroll) { scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false; } 
+		  for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
+			  ThreadStateData.lcddirty[i][j]=false;
+			  Lcddirty[i][j]= Lcddirty[i][j] || OutStateData.lcddirty[i][j];	
+		  }	
+		  EndMutualExclusion();
+
+		  // scroller
+
+		  if ( (OutStateData.State==PrevState) && ( OutStateData.State == Replay || OutStateData.State == Menu || OutStateData.State == Title ) ) {
+			  switch (OutStateData.State) {
+			  case Replay:
+				  ScrollState=LCDREPLAY; ScrollLine=1;	
+				  break;  	
+			  case Menu:
+				  ScrollState=LCDMENU;   ScrollLine=1;	
+				  break;  	
+			  case Title:
+				  ScrollState=LCDTITLE;
+				  if (!ToggleMode) {
+					  ScrollLine=2;
+				  } else {
+					  ScrollLine=1;
+					  if (LcdSetup.ShowTime) {
+						  char tmpbuffer[1024];
+						  strcpy(tmpbuffer,OutStateData.lcdbuffer[LCDTITLE][1]);
+						  strcat(tmpbuffer," * ");
+						  strcat(tmpbuffer, OutStateData.lcdfullbuffer[LCDTITLE]);
+						  strcpy(OutStateData.lcdfullbuffer[LCDTITLE],tmpbuffer);
+					  }
+					  strncpy(OutStateData.lcdbuffer[LCDTITLE][1],OutStateData.lcdfullbuffer[LCDTITLE],wid);
+				  }
+				  if ( strlen(OutStateData.lcdfullbuffer[LCDTITLE]) != lasttitlelen ) {
+					  lasttitlelen=strlen(OutStateData.lcdfullbuffer[LCDTITLE]);
+					  scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false;	    
+				  }		  
+				  break;  	
+			  default:  
+				  break; 
+			  }
+
+			  if ( ( strlen(OutStateData.lcdfullbuffer[ScrollState]) > (((ToggleMode)?1:2)*wid+3) ) 
+					  && ( (scrollpos) || !(scrollwaitcnt=(scrollwaitcnt+1)%LcdSetup.Scrollwait) ) ) {
+				  if ( !(scrollcnt=(scrollcnt+1)%LcdSetup.Scrollspeed)  ) {      
+					  scrollpos=(scrollpos+1)%strlen(OutStateData.lcdfullbuffer[ScrollState]);
+					  if  ( scrollpos==1 ) scrollwaitcnt=0;
+					  for (i=0; i<wid; i++) {
+						  OutStateData.lcdbuffer[ScrollState][ScrollLine][i]=
+							  OutStateData.lcdfullbuffer[ScrollState][(scrollpos+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
+					  } 
+					  OutStateData.lcdbuffer[ScrollState][ScrollLine][wid]='\0';
+					  for (i=0; i<wid; i++) {
+						  OutStateData.lcdbuffer[ScrollState][ScrollLine+1][i]=
+							  OutStateData.lcdfullbuffer[ScrollState][(scrollpos+wid+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
+					  } 
+					  OutStateData.lcdbuffer[ScrollState][ScrollLine+1][wid]='\0';
+					  Lcddirty[ScrollState][ScrollLine]=Lcddirty[ScrollState][ScrollLine+1]=true; 
+				  }
+			  } else if (!LcdSetup.ShowTime) Lcddirty[LCDTITLE][1]=true;
+		  }
+
+		  // volume  
+
+		  if (OutStateData.showvolume) gettimeofday(&voltime,NULL);
+		  if ( voltime.tv_sec != 0) { // volume
+			  if (  ((now.tv_sec - voltime.tv_sec)*1000000+now.tv_usec-voltime.tv_usec ) > (100000*LcdSetup.VolumeKeep)  ) {
+				  voltime.tv_sec=0;
+				  OutStateData.barx=1; OutStateData.bary=1; OutStateData.barl=0; volume=false;
+			  } else {
+				  volume=true;      
+				  OutStateData.barx=1; OutStateData.bary=((hgt==2)?2:3);
+				  // shortening volume bar in togglemode (lcd with 2x20)
+				  OutStateData.barl=(cellwid*((hgt==2 && !ToggleMode)?2:1)*wid*OutStateData.volume)/255;
+			  }	      
+		  }	    
+		  if (volume) OutStateData.State = Vol;
+
+		  // modes
+
+		  switch (OutStateData.State) {
+
+		  case Menu: // display menu = 0
+			  lastUserActivity=time(NULL);
+			  LineMode=1; if (!volume) { OutStateData.barx=1; OutStateData.bary=1; OutStateData.barl=0; }
+			  if (PrevState != Menu) for (i=0;i<4;i++) Lcddirty[LCDMENU][i]=true;
+			  for (i=0;i<4;i++) if (Lcddirty[LCDMENU][i]) {
+				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDMENU][i]);
+				  Lcddirty[LCDMENU][i]=false;
+			  }        
+			  PrevState=Menu; 
+			  break;
+
+		  case Title: // Display 'titlescsreen' = 1
+			  LineMode=0;
+			  if ( (LcdSetup.ShowTime) && ( (now.tv_usec < WakeUpCycle) || (PrevState != Title) ) ) { 
+				  cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
+				  cLcd::Write(1,workstring);
+			  }
+			  if (PrevState != Title) for (i=LcdSetup.ShowTime?1:0;i<4;i++) Lcddirty[LCDTITLE][i]=true;
+			  for (i=LcdSetup.ShowTime?1:0;i<4;i++) if (Lcddirty[LCDTITLE][i]) { 
+				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDTITLE][i]); 
+				  Lcddirty[LCDTITLE][i]=false; 
+			  }
+			  PrevState = Title;
+			  break;
+
+		  case Replay: // Display date/time during replaying = 2
+			  LineMode=1;
+			  if ( !ToggleMode && ((now.tv_usec < WakeUpCycle) || (PrevState != Replay)) ) { 
+				  cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
+				  cLcd::Write(1,workstring);
+			  } 
+			  if (PrevState != Replay) { scrollpos=0; for (i=1;i<4;i++) Lcddirty[LCDREPLAY][i]=true; }
+			  for (i=(ToggleMode)?0:1;i<4;i++) if (Lcddirty[LCDREPLAY][i]) { 
+				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDREPLAY][i]); 
+				  Lcddirty[LCDREPLAY][i]=false; 
+			  }
+			  PrevState = Replay;
+			  break;
+
+		  case Misc: // Display messages  = 3
+			  LineMode=0;
+			  lastUserActivity=time(NULL);
+			  if (PrevState != Misc) for (i=0;i<4;i++) Lcddirty[LCDMISC][i]=true;
+			  for (i=0;i<4;i++) if (Lcddirty[LCDMISC][i]) {
+				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDMISC][i]);
+				  Lcddirty[LCDMISC][i]=false;
+			  }
+			  PrevState = Misc;
+			  break;
+
+		  case Vol: // Display Volume = 4
+			  LineMode=0;
+			  lastUserActivity=time(NULL);
+			  if (PrevState != Vol) for (i=0;i<4;i++) Lcddirty[LCDVOL][i]=true;
+			  for (i=0;i<4;i++) if (Lcddirty[LCDVOL][i]) {
+				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDVOL][i]);
+				  Lcddirty[LCDVOL][i]=false;
+			  }
+			  PrevState = Vol;
+			  break;
+
+		  default: // quite impossible :) 
+			  break;
+		  }
+
+		  // bargraph
+		  if ( (OutStateData.barx != barx) || (OutStateData.bary != bary) || (OutStateData.barl != barl) ) {
+			  sprintf(workstring,"widget_set VDR prbar %d %d %d\n",OutStateData.barx,OutStateData.bary,OutStateData.barl);
+			  sock_send_string(sock,workstring);
+			  barx=OutStateData.barx; bary=OutStateData.bary; barl=OutStateData.barl;          
+		  }
+
+		  // prio
+		  //    lastUserActivity=time(NULL);       // <---------------------------------------  UserActivity Dummy !!!
+		  if (LcdSetup.SetPrio != 0) {
+			  if (LcdSetup.SetPrio == 1){
+				  if (lastPrio != LcdSetup.ClientPrioN) {
+					  sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioN );
+					  lastPrio=LcdSetup.ClientPrioN;
+					  sock_send_string(sock,priostring);
+				  }
+			  } else {
+				  if(time(NULL) > (lastUserActivity + LcdSetup.PrioWait)) {
+					  if (lastPrio != LcdSetup.ClientPrioN) {
+						  sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioN );
+						  lastPrio=LcdSetup.ClientPrioN;
+						  sock_send_string(sock,priostring);
+					  }
+				  }
+				  else if (lastPrio != LcdSetup.ClientPrioH) {
+					  sprintf(priostring,"screen_set VDR -priority %d\n", LcdSetup.ClientPrioH );
+					  lastPrio=LcdSetup.ClientPrioH;
+					  sock_send_string(sock,priostring);
+				  }
+			  }
+		  }
+
+		  // backlight
+		  if (LcdSetup.BackLight == 2) { // auto
+			  if(time(NULL) > (lastUserActivity + LcdSetup.BackLightWait)){
+				  if ( lastBackLight != 0) {
+					  sock_send_string(sock,"backlight off\n");
+					  lastBackLight = 0;
+				  }
+			  } else if ( lastBackLight != 1) {
+				  sock_send_string(sock,"backlight on\n");
+				  lastBackLight = 1;
+			  }
+		  }
+		  else if ( lastBackLight != LcdSetup.BackLight) {
+
+			  lastBackLight=LcdSetup.BackLight;
+			  if (lastBackLight)
+				  sock_send_string(sock,"backlight on\n");
+			  else
+				  sock_send_string(sock,"backlight off\n");
+		  }	    
+
+		  // keys
+
+		  if ( LcdMaxKeys && (lastAltShift != LcdSetup.AltShift) ) {
+			  lastAltShift=LcdSetup.AltShift;
+			  if (lastAltShift)
+				  sock_send_string(sock,"screen_set VDR -heartbeat slash\n");
+			  else
+				  sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
+		  }	    
+
+
+		  if ( !(keycnt=(keycnt+1)%4) ) lastkeypressed='\0';
+
+		  memset(workstring,0,WorkString_Length);
+		  workstring[0]='\0';
+		  sock_recv(sock, workstring, WorkString_Length);
+		  workstring[WorkString_Length-1]='\0';
+		  //if (workstring[0] != '\0') syslog(LOG_INFO, "%s",  workstring);
+
+		  //  reconnect if LCDd died
+
+		  sock_send_string(sock, "hello\n");
+		  //syslog(LOG_INFO, "workstring1: %d : %d",strlen(workstring),(strlen(workstring)-17));
+		  //syslog(LOG_INFO, "workstring2: %s",workstring);
+
+		  j=0;
+		  for (i=0; (int)i < ((int)strlen(workstring)-17); i++ ) {
+			  if(strncmp("connect LCDproc",workstring+i,15) == 0){
+				  j=1;
+				  break;
+			  }
+		  }
+		  if(!suspended) {
+			  if (j==0){
+				  if(LCDd_dead > MAX_LCDd_dead) {
+					  syslog(LOG_INFO, "Connection to LCDd at %s:%d lost, trying to reestablish.",host,port);
+					  Close();
+					  break;
+				  }
+				  LCDd_dead++;
+			  } else LCDd_dead=0;
+		  } 
+
+
+		  // keys (again)
+
+		  if ( LcdMaxKeys && ( strlen(workstring) > 4 ) ) {
+			  for (i=0; i < (strlen(workstring)-4); i++ ) {	    
+				  if (workstring[i]=='k' && workstring[i+1]=='e' && workstring[i+2]=='y' 
+					  && workstring[i+3]==' ' && workstring[i+4]!=lastkeypressed ) {
+					  lastkeypressed=workstring[i+4];		
+					  for (j=0; j<LcdMaxKeys && workstring[i+4]!=LcdUsedKeys[j]; j++ ) {}
+					  if (workstring[i+4] == LcdShiftKey) {
+						  LcdShiftkeyPressed = ! LcdShiftkeyPressed;
+						  if (LcdShiftkeyPressed)
+							  sock_send_string(sock,"screen_set VDR -heartbeat on\n");
+						  else
+							  sock_send_string(sock,"screen_set VDR -heartbeat off\n");
+					  }		  
+					  if ( (workstring[i+4] != LcdShiftKey) ) {
+						  if (LcdShiftkeyPressed) {		  
+							  //syslog(LOG_INFO, "shiftkey  pressed: %c %d",  workstring[i+4],j);
+							  cRemote::Put(LcdShiftMap[j]);
+							  LcdShiftkeyPressed=false;
+							  sock_send_string(sock,"screen_set VDR -heartbeat off\n");
+						  } else {
+							  //syslog(LOG_INFO, "normalkey pressed: %c %d",  workstring[i+4],j);
+							  cRemote::Put(LcdNormalMap[j]);
+						  }	    
+					  }		  
+				  }       	
+			  }
+		  }
+
+		  // Output
+
+		  int OutValue = 0;
+		  char lcdCommand[100];
+		  if (!closing){
+			  if (LcdSetup.OutputNumber > 0){
+				  for (int o=0; o <  LcdSetup.OutputNumber; o++){
+					  switch(LcdSetup.OutputFunction[o]){
+					  case 0: // Off
+						  break;
+					  case 1: // On
+						  OutValue += 1 << o;
+						  break;
+					  case 2: // Recording DVB 1
+						  if (OutStateData.CardStat[0] == 2)
+							  OutValue += 1 << o;
+						  break;
+					  case 3: // Recording DVB 2
+						  if (OutStateData.CardStat[1] == 2)
+							  OutValue += 1 << o;
+						  break;
+					  case 4: // Recording DVB 3
+						  if (OutStateData.CardStat[2] == 2)
+							  OutValue += 1 << o;
+						  break;
+					  case 5: // Recording DVB 4
+						  if (OutStateData.CardStat[3] == 2)
+							  OutValue += 1 << o;
+						  break;
+					  case 6: // Replay
+						  if (OutStateData.State == Replay)
+							  OutValue += 1 << o;
+						  break;
+					  case 7: // DVD
+						  if ( (OutStateData.State == Replay) && (!strncmp(OutStateData.lcdfullbuffer[LCDREPLAY],"DVD", 3)))
+							  OutValue += 1 << o;
+						  break;
+					  case 8: // Mplayer
+						  break;
+					  case 9: // MP3
+						  if ( (OutStateData.State == Replay) && OutStateData.lcdfullbuffer[LCDREPLAY][0]=='[' &&
+								  OutStateData.lcdfullbuffer[LCDREPLAY][3]==']' && 
+								  (OutStateData.lcdfullbuffer[LCDREPLAY][1]=='.' || OutStateData.lcdfullbuffer[LCDREPLAY][1]=='L' ) &&
+								  (OutStateData.lcdfullbuffer[LCDREPLAY][2]=='.' || OutStateData.lcdfullbuffer[LCDREPLAY][2]=='S' )
+						  )
+							  OutValue += 1 << o;     
+						  break;
+					  case 10: // Mplayer + MP3
+						  // Until I find a better solution any replay that is not a DVD is flagged as Mplayer-Mp3
+						  if ( (OutStateData.State == Replay) && (strncmp(OutStateData.lcdfullbuffer[LCDREPLAY],"DVD",3))!= 0)
+							  OutValue += 1 << o;
+						  break;
+					  case 11: // User1
+						  break;
+					  case 12: // User2
+						  break;
+					  case 13: // User3
+						  break;
+					  default:
+						  ;
+					  }
+				  }
+				  sprintf(lcdCommand,"output %d\n",OutValue);
+				  sock_send_string(sock,lcdCommand);
+			  }
+		  }
+		  usleep(WakeUpCycle-(now.tv_usec%WakeUpCycle)); // sync to systemtime for nicer time output 
+	  }
   }
 }
 

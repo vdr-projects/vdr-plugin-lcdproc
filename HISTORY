@@ -47,5 +47,26 @@ VDR Plugin 'lcdproc' Revision History
   (thanks for debugging and testing to
    - Ville Aakko <ville.aakko@gmail.com>, 
    - MichaelB <http://www.vdr-portal.de/board/profile.php?userid=12822>
-   - Joe_D <http://vdrportal.de/board/profile.php?userid=20491> )
+   - Joe_D <http://vdrportal.de/board/profile.php?userid=20491>)
+   
+2008-08-20: Version 0.0.10-jw5
+- changed part of the code in the file lcdtranstbl.h in the section lcdtranstbl-hd44780.h
+  for proper display of Russian characters (provided by Andrey <andreyz@uniqinfo.ru>)
+- now trying to reconnect to LCDd, if first connection fails
+  (patch provided by SHF <http://vdrportal.de/board/profile.php?userid=9031>)
+- implemented SVDRP-Interface for suspending lcdproc access using "PLUG lcdproc OFF"
+  and resuming "PLUG lcdproc ON" 
+  (patch provided by asciii <http://vdr-portal.de/board/profile.php?userid=14268>)
+- fixed some compiler warnings
+  (patch provided by asciii <http://vdr-portal.de/board/profile.php?userid=14268>)
+- added log message on LCDd connection failure
+  (patch provided by asciii <http://vdr-portal.de/board/profile.php?userid=14268>
+   and e-tobi <http://www.e-tobi.net>)
+- changing lcd-backlight and lcd-priority depending on user-activity
+  (patch provided by SHF <http://vdrportal.de/board/profile.php?userid=9031>)
+- modified displaying of volume bar on small displays
+  (based on a patch provided by SHF <http://vdrportal.de/board/profile.php?userid=9031>)
+- fixing method cLcdFeed::SetVolume to accept negative values
+  (suggested by SHF <http://vdrportal.de/board/profile.php?userid=9031>)
+   
    

@@ -15,7 +15,7 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.10-jw4";
+static const char *VERSION        = "0.0.10-jw5";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = trNOOP("LCDproc output");
 
@@ -26,7 +26,7 @@ bool switched=false;
 bool textitem=false;
 bool group=false;
 char tempstringbuffer[80];
-char *LCDprocHOST=LCDHOST;
+const char *LCDprocHOST=LCDHOST;
 unsigned int LCDprocPORT=LCDPORT;
 
 static const char * OutputFunctionText[]= {"Off",
@@ -234,6 +234,8 @@ public:
   virtual cOsdMenu *MainMenuAction(void);
   virtual cMenuSetupPage *SetupMenu(void);
   virtual bool SetupParse(const char *Name, const char *Value);
+  virtual const char **SVDRPHelpPages(void);
+  virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
   };
 
 cPluginLcd::cPluginLcd(void)
@@ -287,9 +289,10 @@ bool cPluginLcd::Start(void)
   // Start any background activities the plugin shall perform.
   lcdFeed = new cLcdFeed;
   if ( LCDproc->Connect(LCDprocHOST,LCDprocPORT) ) {
-    syslog(LOG_INFO, "connection to LCDd at %s:%d established.",LCDprocHOST,LCDprocPORT);
+    syslog(LOG_INFO, "LCDproc-Plugin started at %s:%d.",LCDprocHOST,LCDprocPORT);
     return true;
   }
+  syslog(LOG_INFO, "connection to LCDd at %s:%d failed.",LCDprocHOST,LCDprocPORT);
   return false; 
 }
 
@@ -360,7 +363,8 @@ cMenuSetupLcd::cMenuSetupLcd(void)
   Add(new cMenuEditStraItem( tr("SetClientPriority"),  &newLcdSetup.SetPrio, 3, PrioBackFunctionText));
   Add(new cMenuEditIntItem( tr("NormalClientPriority"),&newLcdSetup.ClientPrioN,0,255));
   Add(new cMenuEditIntItem( tr("HighClientPriority"),  &newLcdSetup.ClientPrioH,0,255));
-  Add(new cMenuEditIntItem( tr("BackLightWait"),       &newLcdSetup.BackLightWait,1,99));
+  Add(new cMenuEditIntItem( tr("BackLightWait"),       &newLcdSetup.BackLightWait,1,999));
+  Add(new cMenuEditIntItem( tr("PrioWait"),            &newLcdSetup.PrioWait,1,999));
   Add(new cMenuEditIntItem( tr("OutputNumber"),        &newLcdSetup.OutputNumber));
   for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
     sprintf(str2,"%s %d",tr("OutputNumber"),i);
@@ -384,7 +388,8 @@ void cMenuSetupLcd::Store(void)
   SetupStore("SetPrio",     LcdSetup.SetPrio     = newLcdSetup.SetPrio);
   SetupStore("ClientPrioN", LcdSetup.ClientPrioN = newLcdSetup.ClientPrioN);
   SetupStore("ClientPrioH", LcdSetup.ClientPrioH = newLcdSetup.ClientPrioH);
-  SetupStore("BackLightWait", LcdSetup.ClientPrioH = newLcdSetup.BackLightWait);
+  SetupStore("BackLightWait", LcdSetup.BackLightWait = newLcdSetup.BackLightWait);
+  SetupStore("PrioWait",    LcdSetup.PrioWait = newLcdSetup.PrioWait);
   SetupStore("OutputNumber",LcdSetup.OutputNumber   = newLcdSetup.OutputNumber);
   for (int i =0 ; i <  newLcdSetup.OutputNumber; i++){
     sprintf(str2,"OutputNumber %d",i);
@@ -416,6 +421,7 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "ClientPrioN"))  LcdSetup.ClientPrioN = atoi(Value);
   else if (!strcasecmp(Name, "ClientPrioH"))  LcdSetup.ClientPrioH = atoi(Value);
   else if (!strcasecmp(Name, "BackLightWait"))  LcdSetup.BackLightWait = atoi(Value);
+  else if (!strcasecmp(Name, "PrioWait"))       LcdSetup.PrioWait = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber")) LcdSetup.OutputNumber= atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 0")) LcdSetup.OutputFunction[0]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 1")) LcdSetup.OutputFunction[1]   = atoi(Value);
@@ -432,6 +438,40 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else
   return false;
   return true;
+}
+
+const char **cPluginLcd::SVDRPHelpPages(void)
+{
+  // Return help text for SVDRP commands this plugin implements
+  static const char *HelpPages[] = {
+    "ON\n"
+    "    Connect to the LCDd socket.",
+    "OFF\n"
+    "    Disconnect from the LCDd socket.",
+    NULL
+    };
+  return HelpPages;
+}
+
+cString cPluginLcd::SVDRPCommand(const char *Command, const char *Option, int &ReplyCode)
+{
+  // Process SVDRP commands this plugin implements
+  if(!strcasecmp(Command, "ON")) {
+
+    if(LCDproc->Resume())
+      return "connection to LCDd resumed";
+    else
+      return "connection to LCDd not suspended";
+
+  } else if(!strcasecmp(Command, "OFF")) {
+    if(LCDproc->Suspend())
+      return "connection to LCDd suspended";
+    else
+      return "connection to LCDd already suspended";
+
+  } else { ReplyCode=501; return "Missing or unkown args"; }
+
+  return NULL;
 }
 
 VDRPLUGINCREATOR(cPluginLcd); // Don't touch this!
