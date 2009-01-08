@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <vdr@joachim-wilke.de>\n"
-"POT-Creation-Date: 2008-06-14 18:05+0200\n"
+"POT-Creation-Date: 2008-11-16 19:24+0100\n"
 "PO-Revision-Date: 2007-08-12 20:41+0200\n"
 "Last-Translator: Klaus Schmidinger <kls@cadsoft.de>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -15,19 +15,19 @@ msgstr ""
 "Content-Type: text/plain; charset=ISO-8859-15\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: lcd.c:311
+#: lcd.c:363
 msgid "Mute"
 msgstr "Stumm"
 
-#: lcd.c:326
+#: lcd.c:369 lcd.c:378
 msgid "Volume "
 msgstr "Lautstärke "
 
-#: lcd.c:659
+#: lcd.c:711
 msgid "RECORDING"
 msgstr "AUFNAHME "
 
-#: lcd.c:761 lcdproc.c:205 lcdproc.c:215
+#: lcd.c:835 lcdproc.c:205 lcdproc.c:215
 msgid "No EPG info available."
 msgstr "Keine EPG Information verfügbar."
 
@@ -39,82 +39,86 @@ msgstr "LCDproc Ausgabe"
 msgid "Waiting for EPG info."
 msgstr "Suche nach EPG Information."
 
-#: lcdproc.c:345
+#: lcdproc.c:348
 msgid "off"
 msgstr "aus"
 
-#: lcdproc.c:346
+#: lcdproc.c:349
 msgid "on"
 msgstr "an"
 
-#: lcdproc.c:347
+#: lcdproc.c:350
 msgid "auto"
 msgstr "auto"
 
-#: lcdproc.c:348
+#: lcdproc.c:351
 msgid "detailed"
 msgstr "detailiert"
 
-#: lcdproc.c:349
+#: lcdproc.c:352
 msgid "simple"
 msgstr "einfach"
 
-#: lcdproc.c:352
+#: lcdproc.c:355
 msgid "FullCycle"
 msgstr "Zyklusdauer Statuszeile"
 
-#: lcdproc.c:353
+#: lcdproc.c:356
 msgid "TimeDateCycle"
 msgstr "davon Dauer Zeitanzeige"
 
-#: lcdproc.c:354
+#: lcdproc.c:357
 msgid "VolumeKeep"
 msgstr "Anzeigedauer Lautstärke"
 
-#: lcdproc.c:355
+#: lcdproc.c:358
 msgid "Scrollwait"
 msgstr "Zeit bis Text rollen"
 
-#: lcdproc.c:356
+#: lcdproc.c:359
 msgid "Scrollspeed"
 msgstr "Rollgeschwindigkeit"
 
-#: lcdproc.c:357
+#: lcdproc.c:360
 msgid "Charmap"
 msgstr "Zeichenkodierung"
 
-#: lcdproc.c:358
+#: lcdproc.c:361
 msgid "AltShift"
 msgstr "Alternative \"Heartbeat\"-Signalisierung"
 
-#: lcdproc.c:359
+#: lcdproc.c:362
 msgid "BackLight"
 msgstr "Hintergrundbeleuchtung"
 
-#: lcdproc.c:360
+#: lcdproc.c:363
 msgid "SetClientPriority"
 msgstr ""
 
-#: lcdproc.c:361
+#: lcdproc.c:364
 msgid "NormalClientPriority"
 msgstr ""
 
-#: lcdproc.c:362
+#: lcdproc.c:365
 msgid "HighClientPriority"
 msgstr ""
 
-#: lcdproc.c:363
+#: lcdproc.c:366
 msgid "BackLightWait"
 msgstr ""
 
-#: lcdproc.c:364 lcdproc.c:366
+#: lcdproc.c:367
+msgid "PrioWait"
+msgstr ""
+
+#: lcdproc.c:368 lcdproc.c:370
 msgid "OutputNumber"
 msgstr "Zahl der Ausgänge am LCD"
 
-#: lcdproc.c:369
+#: lcdproc.c:373
 msgid "Recording status"
 msgstr "Aufnahemstatus"
 
-#: lcdproc.c:370
+#: lcdproc.c:374
 msgid "Show time"
 msgstr "Zeit anzeigen"

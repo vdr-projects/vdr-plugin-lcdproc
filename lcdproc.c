@@ -15,7 +15,7 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.10-jw5";
+static const char *VERSION        = "0.0.10-jw6";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = trNOOP("LCDproc output");
 
