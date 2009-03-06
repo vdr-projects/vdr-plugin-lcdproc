@@ -23,6 +23,7 @@ public:
   int OutputFunction[LCDMAXOUTPUTS];
   int RecordingStatus;
   int ShowTime;
+  int ShowSubtitle;
 public:
   cLcdSetup(void);
   };

@@ -12,14 +12,14 @@
 #include "sockets.h"
 #include <vdr/plugin.h>
 
-#ifdef LCD_EXT_KEY_CONF 
-#include LCD_EXT_KEY_CONF 
-#else 
+#ifdef LCD_EXT_KEY_CONF
+#include LCD_EXT_KEY_CONF
+#else
 #include "lcdkeyconf.h"
 #endif
 
 // character mapping for output, see cLcd::Write
-#include "lcdtranstbl.h"  
+#include "lcdtranstbl.h"
 
 #define LCDMENU   0
 #define LCDTITLE  1
@@ -31,24 +31,24 @@
 
 cLcd::cLcd() {
   int i, j;
-  connected = false; 
+  connected = false;
   suspended = false;
-  ThreadStateData.showvolume = false; 
-  ThreadStateData.newscroll = false; 
+  ThreadStateData.showvolume = false;
+  ThreadStateData.newscroll = false;
   sock = wid = hgt = cellwid = cellhgt = 0;
   closing = false;
-  host = NULL; 
-  replayDvbApi = NULL; 
+  host = NULL;
+  replayDvbApi = NULL;
   primaryDvbApi = NULL;
-  
-  for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
-    ThreadStateData.lcdbuffer[i][j][0]=' '; 
-    ThreadStateData.lcdbuffer[i][j][1]='\0'; 
-    ThreadStateData.lcddirty[i][j]=true; 
-  }   
+
+  for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) {
+    ThreadStateData.lcdbuffer[i][j][0]=' ';
+    ThreadStateData.lcdbuffer[i][j][1]='\0';
+    ThreadStateData.lcddirty[i][j]=true;
+  }
   ThreadStateData.State=Menu;
   for (i=0;i<LCDMAXSTATEBUF;i++) LastState[i]=Title; LastStateP=0;
-  ThreadStateData.barx=1, ThreadStateData.bary=1, ThreadStateData.barl=0; 
+  ThreadStateData.barx=1, ThreadStateData.bary=1, ThreadStateData.barl=0;
   for (i=0;i<LCDMAXCARDS;i++) ThreadStateData.CardStat[i]=0;
   channelSwitched = false;
   SummaryText = NULL;
@@ -60,7 +60,8 @@ cLcd::cLcd() {
 }
 
 cLcd::~cLcd() {
-  if (connected) { cLcd::Close(); }  
+  cLcd::Cancel(2);
+  if (connected) { cLcd::Close(); }
   if (conv) { delete(conv); }
   if (host) { free(host); }
 }
@@ -85,14 +86,14 @@ bool cLcd::Open() {
   }
 
   ToggleMode=false;
-  sock_send_string(sock, "hello\n"); 
-  usleep(500000); // wait for a connect message  
+  sock_send_string(sock, "hello\n");
+  usleep(500000); // wait for a connect message
   memset(istring,0,1024);
   sock_recv(sock, istring, 1024);
 
   if ( strncmp("connect LCDproc",istring,15) != 0 ) {
     syslog(LOG_INFO, "LCDd at %s:%d does not respond.",host,port);
-    cLcd::Close(); 
+    cLcd::Close();
     return connected=false;
   }
 
@@ -101,9 +102,9 @@ bool cLcd::Open() {
   if (sscanf(istring+i,"lcd wid %d hgt %d cellwid %d cellhgt %d", &wid, &hgt, &cellwid, &cellhgt)) connected=true;
 
   if ((hgt < 4 ) || (wid < 16)) connected = false; // 4 lines are needed, may work with more than 4 though
-  if ((hgt==2) && (wid>31)) { connected = true; wid=wid/2; LineMode=0; }   // 2x32-2x40 
+  if ((hgt==2) && (wid>31)) { connected = true; wid=wid/2; LineMode=0; }   // 2x32-2x40
   else if ( (hgt==2) && (wid>15) && (wid<32) ) { connected = true; ToggleMode=true; }  // 2x16-2x31
-  if (!connected) { 
+  if (!connected) {
     syslog(LOG_INFO, "Minimum Display Size is 2x16. Your LCD is to small, sorry.");
     cLcd::Close();
     return connected;
@@ -117,10 +118,10 @@ bool cLcd::Open() {
   sock_send_string(sock,"widget_add VDR line4 string\n"); sock_recv(sock, istring, 1024);
   sock_send_string(sock,"widget_add VDR prbar hbar\n"); sock_recv(sock, istring, 1024);
   sock_send_string(sock,"widget_set VDR prbar 1 1 0\n"); sock_recv(sock, istring, 1024);
-  
+
   for (i=0; i<LcdMaxKeys;i++) {
     sprintf(istring,"client_add_key %c\n",LcdUsedKeys[i]);
-    sock_send_string(sock,istring); 
+    sock_send_string(sock,istring);
     sock_recv(sock, istring, 1024);
   }
   syslog(LOG_INFO, "connection to LCDd at %s:%d established.",host,port);
@@ -140,7 +141,7 @@ void cLcd::Close() {
   }else{
    fprintf(stderr,"Not Connected !!! \n");
   }
-  connected=false; sock=wid=hgt=cellwid=cellhgt=0; 
+  connected=false; sock=wid=hgt=cellwid=cellhgt=0;
 }
 
 bool cLcd::Suspend() {
@@ -184,24 +185,24 @@ const char* cLcd::Convert(const char *s) {
 void cLcd::Info() { // just for testing ...
  if (connected)
    printf("sock %d, wid %d, hgt %d, cellwid %d, cellhgt %d\n",sock, wid, hgt, cellwid, cellhgt);
- else 
+ else
    printf("not connected\n");
 }
 
 void cLcd::SetTitle( const char *string) {
   if (!connected) return;
-  
+
   const char* c_string = Convert(string);
-                     
+
   unsigned int i;
   char title[wid+1];
-  
-  // we need to know the length of the translated string "Schedule" 
+
+  // we need to know the length of the translated string "Schedule"
   const char *trstring=trVDR("Schedule - %s");
   int trstringlength=strlen(trstring)-3;
 
   if (strncmp(trstring,c_string,trstringlength)==0) {
-    // it is the title of the "Schedule" menu, so we replace "Schedule" with ">"	  
+    // it is the title of the "Schedule" menu, so we replace "Schedule" with ">"
     title[0]='>'; snprintf( title+1, wid,"%s",c_string+trstringlength);
   } else if (strlen(c_string) > (wid-1)) {
     snprintf( title, wid+1,"%s",c_string);
@@ -215,7 +216,7 @@ void cLcd::SetTitle( const char *string) {
 
 void cLcd::SetMain( unsigned int n, const char *string, bool isConverted) {
 	const char* c_string;
-	
+
 	if (!connected) return;
 
 	if (isConverted)
@@ -227,68 +228,74 @@ void cLcd::SetMain( unsigned int n, const char *string, bool isConverted) {
 	char line3[wid+1];
 
 	if (c_string != NULL) {
+		BeginMutualExclusion();
 		cLcd::Copy(ThreadStateData.lcdfullbuffer[n],c_string,LCDMAXFULLSTRING-3);
-		int i = strlen(ThreadStateData.lcdfullbuffer[n]);
+		unsigned int i = strlen(ThreadStateData.lcdfullbuffer[n]);
+		if (i > (((ToggleMode)?1:2)*wid)) {
 		ThreadStateData.lcdfullbuffer[n][i++]=' ';
 		ThreadStateData.lcdfullbuffer[n][i++]='*';
 		ThreadStateData.lcdfullbuffer[n][i++]=' ';
+		}
 		ThreadStateData.lcdfullbuffer[n][i]='\0';
 		ThreadStateData.newscroll=true;
 		cLcd::Copy(StringBuffer,c_string,2*wid);
 		cLcd::Split(StringBuffer,line2,line3);
+		EndMutualExclusion();
 		cLcd::SetBuffer(n,NULL,line2,line3,NULL);
 	} else {
+		BeginMutualExclusion();
 		//cLcd::SetBuffer(n,NULL," \0"," \0",NULL);
 		ThreadStateData.lcdfullbuffer[n][0]='\0';
+		EndMutualExclusion();
 	}
 }
 
 void cLcd::SetHelp( unsigned int n, const char *Red, const char *Green, const char *Yellow, const char *Blue) {
   if (!connected) return;
- 
+
   char help[2*wid], red[wid+1], green[wid+1], yellow[wid+1], blue[wid+1];
   unsigned int allchars=0, i,j , empty=0, spacewid=1;
   char *longest, *longest1, *longest2;
 
   const char* c_Red    = Convert(Red);
-  if ( c_Red==NULL || c_Red[0]=='\0' ) { 
+  if ( c_Red==NULL || c_Red[0]=='\0' ) {
     empty++; red[0]=' '; red[1]='\0';
-  } else { 
-    j=i=0; while ( (i<wid) && (c_Red[i] != '\0') ) { 
+  } else {
+    j=i=0; while ( (i<wid) && (c_Red[i] != '\0') ) {
       if (c_Red[i] !=' ') {red[j]=c_Red[i]; j++; }
-      i++;     
+      i++;
     } red[j]='\0';
-    allchars+=strlen(red); 
+    allchars+=strlen(red);
   }
   const char* c_Green  = Convert(Green);
-  if ( c_Green==NULL || c_Green[0]=='\0' )  { 
+  if ( c_Green==NULL || c_Green[0]=='\0' )  {
     empty++; green[0]=' '; green[1]='\0';
-  } else { 
-    j=i=0; while ( (i<wid) && (c_Green[i] != '\0') ) { 
+  } else {
+    j=i=0; while ( (i<wid) && (c_Green[i] != '\0') ) {
       if (c_Green[i] !=' ') {green[j]=c_Green[i]; j++; }
-      i++;     
+      i++;
     } green[j]='\0';
-    allchars+=strlen(green); 
+    allchars+=strlen(green);
   }
   const char* c_Yellow = Convert(Yellow);
-  if ( c_Yellow==NULL || c_Yellow[0]=='\0' ) { 
+  if ( c_Yellow==NULL || c_Yellow[0]=='\0' ) {
     empty++; yellow[0]=' '; yellow[1]='\0';
-  } else { 
-    j=i=0; while ( (i<wid) && (c_Yellow[i] != '\0') ) { 
+  } else {
+    j=i=0; while ( (i<wid) && (c_Yellow[i] != '\0') ) {
       if (c_Yellow[i] !=' ') {yellow[j]=c_Yellow[i]; j++; }
-      i++;     
+      i++;
     } yellow[j]='\0';
-    allchars+=strlen(yellow); 
+    allchars+=strlen(yellow);
   }
   const char* c_Blue   = Convert(Blue);
-  if ( c_Blue==NULL || c_Blue[0]=='\0' ) { 
+  if ( c_Blue==NULL || c_Blue[0]=='\0' ) {
     empty++; blue[0]=' '; blue[1]='\0';
-  } else { 
-    j=i=0; while ( (i<wid) && (c_Blue[i] != '\0') ) { 
+  } else {
+    j=i=0; while ( (i<wid) && (c_Blue[i] != '\0') ) {
       if (c_Blue[i] !=' ') {blue[j]=c_Blue[i]; j++; }
-      i++;     
+      i++;
     } blue[j]='\0';
-    allchars+=strlen(blue); 
+    allchars+=strlen(blue);
   }
 
   while (allchars > (wid-empty-3)) {
@@ -320,9 +327,9 @@ void cLcd::SetHelp( unsigned int n, const char *Red, const char *Green, const ch
 
 void cLcd::SetStatus( const char *string) {
   if (!connected) return;
-  
+
   const char* c_string = Convert(string);
-                   
+
   char statstring[2*wid+1];
 
   if (c_string == NULL) {
@@ -335,7 +342,7 @@ void cLcd::SetStatus( const char *string) {
 
 void cLcd::SetWarning( const char *string) {
   if (!connected) return;
-  
+
   const char* c_string = Convert(string);
 
   char statstring[2*wid+1];
@@ -366,12 +373,12 @@ if (!connected) return;
   } else {
     if (hgt==2) {
       if (ToggleMode) {
-	    cLcd::SetLine(Vol,0,tr("Volume "));
-        cLcd::SetLine(Vol,1," ");	
-      } else {	      
-        cLcd::SetLine(Vol,0,"|---|---|---|---|---|---|---|---|---|---");
+	    cLcd::SetLine(Vol,0,Convert(tr("Volume ")));
+        cLcd::SetLine(Vol,1," ");
+      } else {
+        cLcd::SetLine(Vol,0,Convert(tr("Volume ")));
         cLcd::SetLine(Vol,3," ");
-        cLcd::SetLine(Vol,1,"|---|---|---|---|---|---|---|---|---|---");
+        cLcd::SetLine(Vol,1," ");
         cLcd::SetLine(Vol,2," ");
       }
     } else {
@@ -379,8 +386,8 @@ if (!connected) return;
       cLcd::SetLine(Vol,3,"|---|---|---|---|---|---|---|---|---|---");
       cLcd::SetLine(Vol,1,"|---|---|---|---|---|---|---|---|---|---");
       cLcd::SetLine(Vol,2," ");
-    }  
-    
+    }
+
   }
 }
 
@@ -393,7 +400,7 @@ void cLcd::SetProgress(const char *begin, const char *end, int percent) {
   if (begin==NULL) {
     BeginMutualExclusion();
       ThreadStateData.barx=1; ThreadStateData.bary=1; ThreadStateData.barl=0;
-    EndMutualExclusion(); 
+    EndMutualExclusion();
   } else {
     time_t t = time(NULL);
     if (t != LastProgress) { // output only once a second
@@ -404,18 +411,18 @@ void cLcd::SetProgress(const char *begin, const char *end, int percent) {
       sprintf(workstring+wid-endw,"%s", end);
       cLcd::SetLine(LCDREPLAY,(ToggleMode)?0:3,workstring);
       BeginMutualExclusion();
-        ThreadStateData.barx=beginw+1+((hgt==2 && !ToggleMode)?wid:0); 
-        ThreadStateData.bary=((hgt==2)?1:4); 
+        ThreadStateData.barx=beginw+1+((hgt==2 && !ToggleMode)?wid:0);
+        ThreadStateData.bary=((hgt==2)?1:4);
         ThreadStateData.barl=(percent*cellwid*(wid-beginw-endw))/100;
       EndMutualExclusion();
-      LastProgress = t; 
+      LastProgress = t;
     }
-  } 
+  }
 }
 
 void cLcd::SetLine(unsigned int n, unsigned int l, const char *string) {
   if (!connected) return;
-  
+
   BeginMutualExclusion();
     if (string != NULL) strncpy(ThreadStateData.lcdbuffer[n][l],string,wid+1);
     ThreadStateData.lcddirty[n][l]=true;
@@ -424,9 +431,9 @@ void cLcd::SetLine(unsigned int n, unsigned int l, const char *string) {
 
 void cLcd::SetLineC(unsigned int n, unsigned int l, const char *string) {
   if (!connected) return;
-  
-  const char* c_string = Convert(string);  
-  
+
+  const char* c_string = Convert(string);
+
   BeginMutualExclusion();
     if (c_string != NULL) cLcd::Copy(ThreadStateData.lcdbuffer[n][l],c_string,wid);
     ThreadStateData.lcddirty[n][l]=true;
@@ -435,65 +442,68 @@ void cLcd::SetLineC(unsigned int n, unsigned int l, const char *string) {
 
 void cLcd::SetBuffer(unsigned int n, const char *l1,const char *l2,const char *l3,const char *l4) {
   if (!connected) return;
-                         
+
   BeginMutualExclusion();
-    if (l1 != NULL) strncpy(ThreadStateData.lcdbuffer[n][0],l1,wid+1); ThreadStateData.lcddirty[n][0]=true; 
-    if (l2 != NULL) strncpy(ThreadStateData.lcdbuffer[n][1],l2,wid+1); ThreadStateData.lcddirty[n][1]=true; 
-    if (l3 != NULL) strncpy(ThreadStateData.lcdbuffer[n][2],l3,wid+1); ThreadStateData.lcddirty[n][2]=true; 
-    if (l4 != NULL) strncpy(ThreadStateData.lcdbuffer[n][3],l4,wid+1); ThreadStateData.lcddirty[n][3]=true; 
+    if (l1 != NULL) strncpy(ThreadStateData.lcdbuffer[n][0],l1,wid+1); ThreadStateData.lcddirty[n][0]=true;
+    if (l2 != NULL) strncpy(ThreadStateData.lcdbuffer[n][1],l2,wid+1); ThreadStateData.lcddirty[n][1]=true;
+    if (l3 != NULL) strncpy(ThreadStateData.lcdbuffer[n][2],l3,wid+1); ThreadStateData.lcddirty[n][2]=true;
+    if (l4 != NULL) strncpy(ThreadStateData.lcdbuffer[n][3],l4,wid+1); ThreadStateData.lcddirty[n][3]=true;
   EndMutualExclusion();
 }
 
 void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, const char *string3) {
   if (!connected) return;
-    
+
   char line[1024];
   char line1[1024];
 
   static char now1[LCDMAXWID+1];
   static char now2[LCDMAXWID+1];
-  
+
   char *c_string1 = string1 ? strdup(Convert(string1)) : NULL;
   char *c_string2 = string2 ? strdup(Convert(string2)) : NULL;
   char *c_string3 = string3 ? strdup(Convert(string3)) : NULL;
-  
-  snprintf(line,1024,"%s %s%s%s",
-    (string1==NULL || string1[0]=='\0')?" ":c_string1,
-    (string2==NULL || string2[0]=='\0')?" ":c_string2,
+
+   snprintf(line,1024,"%s%s%s%s%s",
+    (string1==NULL || string1[0]=='\0')?"":c_string1,
+    ((!(string1==NULL || string1[0]=='\0')) && (!(string2==NULL || string2[0]=='\0')))?" ":"",
+    (string2==NULL || string2[0]=='\0')?"":c_string2,
     (string3==NULL || string3[0]=='\0')?"":"|",
-    (string3==NULL || string3[0]=='\0')?" ":c_string3);
+    (string3==NULL || string3[0]=='\0')?"":c_string3);
   cLcd::Copy(line1,line,2*wid);
-  
+
   free(c_string1);
   free(c_string2);
   free(c_string3);
-  
-  
+
+
   if (nownext) {
-    BeginMutualExclusion();    
+    BeginMutualExclusion();
       cLcd::Split(line1,ThreadStateData.lcdbuffer[LCDMISC][2],ThreadStateData.lcdbuffer[LCDMISC][3]);
       ThreadStateData.lcddirty[LCDMISC][2]=true; ThreadStateData.lcddirty[LCDMISC][3]=true;
-    EndMutualExclusion();  
+    EndMutualExclusion();
     cLcd::SetBuffer(LCDMISC,now1,now2,NULL,NULL);
   } else {
     BeginMutualExclusion();
       cLcd::Split(line1,ThreadStateData.lcdbuffer[LCDTITLE][2],ThreadStateData.lcdbuffer[LCDTITLE][3]);
       ThreadStateData.lcddirty[LCDTITLE][2]=true; ThreadStateData.lcddirty[LCDTITLE][3]=true;
       cLcd::Copy(ThreadStateData.lcdfullbuffer[LCDTITLE],line,LCDMAXFULLSTRING-3);
-      int i = strlen(ThreadStateData.lcdfullbuffer[LCDTITLE]);
+      unsigned int i = strlen(ThreadStateData.lcdfullbuffer[LCDTITLE]);
+      if (i>(((ToggleMode)?1:2)*wid)) {
       ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' ';
       ThreadStateData.lcdfullbuffer[LCDTITLE][i++]='*';
-      ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' '; 
-      ThreadStateData.lcdfullbuffer[LCDTITLE][i]='\0';  
+      ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' ';
+      }
+      ThreadStateData.lcdfullbuffer[LCDTITLE][i]='\0';
       sprintf(now1,"%s",ThreadStateData.lcdbuffer[LCDTITLE][2]);
       sprintf(now2,"%s",ThreadStateData.lcdbuffer[LCDTITLE][3]);
     EndMutualExclusion();
-    
+
   }
 }
 
 void cLcd::SummaryInit(const char *string) {
-	
+
   if (SummaryText)
 	  free(SummaryText);
   SummaryText  = strdup(Convert(string));
@@ -504,7 +514,7 @@ void cLcd::SummaryInit(const char *string) {
 void cLcd::SummaryDown() {
   if (!connected) return;
 
-  SummaryCurrent=( (SummaryCurrent+4*wid) < SummaryTextL )?SummaryCurrent+4*wid:SummaryCurrent; 
+  SummaryCurrent=( (SummaryCurrent+4*wid) < SummaryTextL )?SummaryCurrent+4*wid:SummaryCurrent;
 }
 
 void cLcd::SummaryUp() {
@@ -539,19 +549,19 @@ void cLcd::SetCardStat(unsigned int card, unsigned int stat) {
 void cLcd::Clear( unsigned int n) {
   if (!connected) return;
 
-  cLcd::SetBuffer(n," "," "," "," "); 
+  cLcd::SetBuffer(n," "," "," "," ");
 }
 
 void cLcd::SetThreadState( ThreadStates newstate ) {
   if (!connected) return;
 
   BeginMutualExclusion();
-    if (ThreadStateData.State != newstate) { 
+    if (ThreadStateData.State != newstate) {
       cLcd::LastState[(++LastStateP)%LCDMAXSTATEBUF]=newstate;
-      ThreadStateData.State=newstate; 
-      ThreadStateData.barx=1, ThreadStateData.bary=1, ThreadStateData.barl=0; 
+      ThreadStateData.State=newstate;
+      ThreadStateData.barx=1, ThreadStateData.bary=1, ThreadStateData.barl=0;
     }
-  EndMutualExclusion(); 
+  EndMutualExclusion();
 }
 
 void cLcd::PopThreadState() {
@@ -564,7 +574,7 @@ void cLcd::PopThreadState() {
 
 void cLcd::SetReplayDevice(cControl *DvbApi) {
   replayDvbApi=DvbApi;
-}	
+}
 
 void cLcd::SetPrimaryDevice(cDevice *DvbApi) {
 	  primaryDvbApi=DvbApi;
@@ -613,40 +623,40 @@ void cLcd::Split(char *string, char *string1, char *string2) {
        && string[2]==':' && isdigit(string[3]) && isdigit(string[4]) ) {
     char *tmpptr=strpbrk(string,"|");
     if ( ( tmpptr != NULL ) && (ofs=tmpptr-string)<wid && wid-(ofs+1)<2*wid-(j=strlen(string))  ) {
-	 ofs=wid-(ofs+1);     
+	 ofs=wid-(ofs+1);
 	 string[j+ofs]='\0';
 	 for (i=j+ofs-1; i>=wid-ofs;i--) string[i]=string[i-ofs];
 	 for (i=wid-ofs-1;i<wid;i++) string[i]=' ';
-    }	      
+    }
   }
-    
+
   if ( hgt>2 && ( strlen(string) < 2*wid) && ( strlen(string) >= wid ) ) {  // beautification ..
-	  
+
     if (isalpha(string[wid-1]) && isalpha(string[wid])  ) {
-      j=strlen(string);	    
+      j=strlen(string);
       for (i=wid-1; (i>0) && (string[i]!=' ') && (string[i]!='|') && (string[i]!=',') && (string[i]!=')')
 		          && (string[i]!='-') && (string[i]!='.') && (string[i]!=':') ; i-- ) {}
-      
+
       if ( ( (2*wid-j) >= (ofs=wid-(i+1)) ) && ofs+j <= 2*wid   ) {
-	string[j+ofs]='\0';  
+	string[j+ofs]='\0';
 	for (k=j+ofs-1;k>i+ofs; k-- ) string[k]=string[k-ofs];
-        for (k=0;k<ofs;k++) string[i+k+1]=' ';	
+        for (k=0;k<ofs;k++) string[i+k+1]=' ';
       }
-     
+
     }
 
-    if ( (j=strlen(string)) < 2*wid && isdigit(string[0]) && isdigit(string[1]) &&  
+    if ( (j=strlen(string)) < 2*wid && isdigit(string[0]) && isdigit(string[1]) &&
 		     string[2]==':' && isdigit(string[3]) && isdigit(string[4])   ) {
       ofs=2*wid-strlen(string); ofs=(ofs>6)?6:ofs;
       if (string[wid]=='|') string[wid]=' ';
       if (ofs==6 && string[wid]==' ') ofs--;
       string[j+ofs]='\0';
-      for (i=j+ofs-1; i>=wid+ofs;i--) string[i]=string[i-ofs];       
+      for (i=j+ofs-1; i>=wid+ofs;i--) string[i]=string[i-ofs];
       for (i=wid;i<wid+ofs;i++) string[i]=' ';
     }
   }
 
-	
+
   strncpy(string1,string,wid+1);
   if ( strlen(string) >wid ) {
     strncpy(string2,string+wid,wid+1);
@@ -660,15 +670,15 @@ void cLcd::Write(int line, const char *string) { // used for any text output to 
   char workstring[256];
   unsigned int i,out;
 
-  if (ToggleMode && (line > 2)) return; 
-  
+  if (ToggleMode && (line > 2)) return;
+
   if (ToggleMode || hgt>2 ) {
     sprintf(workstring,"widget_set VDR line%d 1 %d \"",line,line);
   } else if (LineMode==0) {
-    sprintf(workstring,"widget_set VDR line%d %d %d \"",line,(line==2||line==4)?wid+1:1,(line<3)?1:2 );	  
+    sprintf(workstring,"widget_set VDR line%d %d %d \"",line,(line==2||line==4)?wid+1:1,(line<3)?1:2 );
   } else {
     sprintf(workstring,"widget_set VDR line%d %d %d \"",line,(line==3||line==4)?wid+1:1,(line==1||line==4)?1:2);
-  }	  
+  }
   // do lcdtranstbl mapping
   out=strlen(workstring);
   for (i=0;(i<strlen(string)) && (i<wid);i++)
@@ -684,37 +694,49 @@ void cLcd::GetTimeDateStat( char *string, unsigned int OutStateData[] ) {
   const char States[] = ".-*>"; // '.' ... not present, '-' ... present, '*' ... recording, '>' ... replaying
   bool ShowStates=false;
   unsigned int offset;
-  
+
   offset=(wid>36)?20:0;
   for (i=0; i<LCDMAXCARDS && (!ShowStates) ; i++) ShowStates = ShowStates || (OutStateData[i]>1);
 
   t = time(NULL);
   now = localtime(&t);
 
-  if ( offset || !( ShowStates && ((t%LcdSetup.FullCycle) >= LcdSetup.TimeCycle) )) {  
-    if (wid > 19) 
+  if ( offset || !( ShowStates && ((t%LcdSetup.FullCycle) >= LcdSetup.TimeCycle) )) {
+    if (ToggleMode) {
+        strcat(string,"                          ");
+        snprintf(string+wid-6,8," %02d%s%02d", now->tm_hour, (now->tm_sec%2)?" ":":", now->tm_min);
+    }
+    else {
+    if (wid > 19)
       snprintf(string,wid+1,"<%s %02d.%02d %02d:%02d:%02d>",
         Convert(*WeekDayName(now->tm_wday)), now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
     else
       snprintf(string,wid+1,"<%02d.%02d %02d:%02d:%02d>",
         now->tm_mday, now->tm_mon+1, now->tm_hour, now->tm_min,now->tm_sec);
+    }
   }
 
   if ( offset || ( ShowStates && ((t%LcdSetup.FullCycle) >= LcdSetup.TimeCycle) )) {
     if (LcdSetup.RecordingStatus == 0) {
       for (i=0; i<LCDMAXCARDS; i++) {
        snprintf(string+offset,5," %d:%c", i,States[ OutStateData[i] ] );
-       offset+=4;  
+       offset+=4;
       }
     }
     else {
+      if (ToggleMode || wid < 19) {
+          snprintf(string,wid+1,"                                        ");
+          snprintf(string+wid-16,wid+1,"%s  %02d%s%02d", Convert(tr("RECORDING")), now->tm_hour, (now->tm_sec%2)?" ":":", now->tm_min);
+      }
+      else {
       snprintf(string,wid+1,"<%s %02d:%02d:%02d>", Convert(tr("RECORDING")), now->tm_hour, now->tm_min,now->tm_sec);
+      }
     }
   }
 
 }
 
-#define WakeUpCycle 125000 // us 
+#define WakeUpCycle 125000 // us
 #define WorkString_Length 1024
 
 void cLcd::Action(void) { // LCD output thread
@@ -722,7 +744,8 @@ void cLcd::Action(void) { // LCD output thread
   int Current, Total, scrollpos, scrollcnt, scrollwaitcnt, lastAltShift, lastBackLight,lastPrio, keycnt;
   struct timeval now, voltime;
   char workstring[WorkString_Length];
-  char lastkeypressed='\0';  
+  char workstring2[101];
+  char lastkeypressed='\0';
   cLcd::ThreadStates PrevState = Menu;
   struct cLcd::StateData OutStateData;
   bool Lcddirty[LCDMAXSTATES][4];
@@ -730,13 +753,13 @@ void cLcd::Action(void) { // LCD output thread
   char priostring[35];
   // RT
   static int rtcycle;
-  
+
   // LCR
   static int lcrCycle;
-  
+
   time_t nextLcdUpdate, lastUserActivity;
 
-  while (true) {  // outer (reconnect) loop 
+  while (true) {  // outer (reconnect) loop
 	  barx=1; bary=1; barl=0; ScrollState=0; ScrollLine=1; lasttitlelen=0;
 	  Current=0, Total=1, scrollpos=0, scrollcnt=0, scrollwaitcnt=10, lastAltShift=0, lastBackLight=0 ,lastPrio=0, keycnt=0;
 	  lastkeypressed='\0';
@@ -750,7 +773,7 @@ void cLcd::Action(void) { // LCD output thread
 		  Open();
 	  }
 
-	  // backlight init 
+	  // backlight init
 	  if ((lastBackLight=LcdSetup.BackLight))
 		  sock_send_string(sock,"backlight on\n");
 	  else
@@ -767,11 +790,11 @@ void cLcd::Action(void) { // LCD output thread
 		  }
 
 		  sock_send_string(sock,priostring);
-	  } 
+	  }
 	  lastUserActivity=time(NULL);
 
 	  syslog(LOG_INFO, "LCD output thread started (pid=%d), display size: %dx%d", getpid(),hgt,wid);
-	  cLcd::Write(LcdSetup.ShowTime?1:4," Welcome  to  V D R\0"); 
+	  cLcd::Write(LcdSetup.ShowTime?1:4," Welcome  to  V D R\0");
 	  cLcd::Write(LcdSetup.ShowTime?2:3,"--------------------\0");
 	  cLcd::Write(LcdSetup.ShowTime?3:1,"Video Disk Recorder\0");
 	  cLcd::Write(LcdSetup.ShowTime?4:2,"Version: "VDRVERSION"\0");
@@ -800,39 +823,40 @@ void cLcd::Action(void) { // LCD output thread
 
 	  sleep(3); bool volume=false; OutStateData.showvolume=false; ThreadStateData.showvolume=false;
 
-	  if (primaryDvbApi) for (int k=0; k<primaryDvbApi->NumDevices() ; k++) SetCardStat(k,1); 
+	  if (primaryDvbApi) for (int k=0; k<primaryDvbApi->NumDevices() ; k++) SetCardStat(k,1);
 
 	  voltime.tv_sec=0;
 	  for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) Lcddirty[i][j]=true;
 	  nextLcdUpdate = 0; // trigger first update immediately
-	  while (true) { // main loop, wakes up every WakeUpCycle, any output to LCDd is done here  
+	  while (true) { // main loop, wakes up every WakeUpCycle, any output to LCDd is done here
 		  gettimeofday(&now,NULL);
 
 		  //  epg update
 		  if (channelSwitched) {
 			  channelSwitched = false;
+			  lastUserActivity=time(NULL);
 			  nextLcdUpdate = 0; //trigger next epg update
 		  }
 
-		  if ( time(NULL) > nextLcdUpdate ) { 
+		  if ( time(NULL) > nextLcdUpdate ) {
 			  cChannel *channel = Channels.GetByNumber(primaryDvbApi->CurrentChannel());
 			  const cEvent *Present = NULL;
 			  cSchedulesLock schedulesLock;
-			  const cSchedules *Schedules = cSchedules::Schedules(schedulesLock); 
+			  const cSchedules *Schedules = cSchedules::Schedules(schedulesLock);
 			  if (Schedules) {
-				  const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID()); 
-				  if (Schedule) { 
+				  const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
+				  if (Schedule) {
 					  const char *PresentTitle, *PresentSubtitle;
 					  PresentTitle = NULL; PresentSubtitle = NULL;
 					  if ((Present = Schedule->GetPresentEvent()) != NULL) {
 						  nextLcdUpdate=Present->StartTime()+Present->Duration();
 						  PresentTitle = Present->Title();
 						  PresentSubtitle = Present->ShortText();
-						  if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
+						  if ( (LcdSetup.ShowSubtitle) &&  (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
 							  SetRunning(false,Present->GetTimeString(),PresentTitle,PresentSubtitle);
-						  else if (!isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
-					  } else 
-						  SetRunning(false,tr("No EPG info available."), NULL); 
+						  else if ( (LcdSetup.ShowSubtitle) && !isempty(PresentTitle)) SetRunning(false,Present->GetTimeString(),PresentTitle);
+					  } else
+						  SetRunning(false,tr("No EPG info available."), NULL);
 					  if ((Present = Schedule->GetFollowingEvent()) != NULL)
 						  nextLcdUpdate=(Present->StartTime()<nextLcdUpdate)?Present->StartTime():nextLcdUpdate;
 						  rtcycle = 10; // RT
@@ -841,7 +865,7 @@ void cLcd::Action(void) { // LCD output thread
 			  }
 			  if ( nextLcdUpdate <= time(NULL) )
 				  nextLcdUpdate=(time(NULL)/60)*60+60;
-		  }  
+		  }
 
 		  // get&display Radiotext
 		  if (++rtcycle > 10) {	// every 10 times
@@ -890,20 +914,20 @@ void cLcd::Action(void) { // LCD output thread
 			  replayDvbApi->GetIndex(Current, Total, false); Total=(Total==0)?1:Total;
 			  sprintf(tempbuffer,IndexToHMSF(Total));
 			  SetProgress(IndexToHMSF(Current),tempbuffer, (100 * Current) / Total);
-		  } 
+		  }
 
 
 
-		  // copy 
+		  // copy
 
-		  BeginMutualExclusion();  // all data needed for output are copied here  
+		  BeginMutualExclusion();  // all data needed for output are copied here
 		  memcpy(&OutStateData,&ThreadStateData, sizeof (cLcd::StateData));
 		  ThreadStateData.showvolume=false;
-		  if (ThreadStateData.newscroll) { scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false; } 
-		  for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) { 
+		  if (ThreadStateData.newscroll) { scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false; }
+		  for (i=0;i<LCDMAXSTATES;i++) for (j=0;j<4;j++) {
 			  ThreadStateData.lcddirty[i][j]=false;
-			  Lcddirty[i][j]= Lcddirty[i][j] || OutStateData.lcddirty[i][j];	
-		  }	
+			  Lcddirty[i][j]= Lcddirty[i][j] || OutStateData.lcddirty[i][j];
+		  }
 		  EndMutualExclusion();
 
 		  // scroller
@@ -911,56 +935,57 @@ void cLcd::Action(void) { // LCD output thread
 		  if ( (OutStateData.State==PrevState) && ( OutStateData.State == Replay || OutStateData.State == Menu || OutStateData.State == Title ) ) {
 			  switch (OutStateData.State) {
 			  case Replay:
-				  ScrollState=LCDREPLAY; ScrollLine=1;	
-				  break;  	
+				  ScrollState=LCDREPLAY; ScrollLine=1;
+				  break;
 			  case Menu:
-				  ScrollState=LCDMENU;   ScrollLine=1;	
-				  break;  	
+				  ScrollState=LCDMENU;   ScrollLine=1;
+				  break;
 			  case Title:
 				  ScrollState=LCDTITLE;
 				  if (!ToggleMode) {
 					  ScrollLine=2;
 				  } else {
 					  ScrollLine=1;
-					  if (LcdSetup.ShowTime) {
-						  char tmpbuffer[1024];
-						  strcpy(tmpbuffer,OutStateData.lcdbuffer[LCDTITLE][1]);
-						  strcat(tmpbuffer," * ");
-						  strcat(tmpbuffer, OutStateData.lcdfullbuffer[LCDTITLE]);
-						  strcpy(OutStateData.lcdfullbuffer[LCDTITLE],tmpbuffer);
-					  }
+					  strncpy(workstring2,OutStateData.lcdbuffer[LCDTITLE][1],wid);
+				//	  if (LcdSetup.ShowTime) {
+				//	      char tmpbuffer[1024];
+				//	      strcpy(tmpbuffer,OutStateData.lcdbuffer[LCDTITLE][1]);
+				//	      strcat(tmpbuffer," * ");
+				//	      strcat(tmpbuffer, OutStateData.lcdfullbuffer[LCDTITLE]);
+				//	      strcpy(OutStateData.lcdfullbuffer[LCDTITLE],tmpbuffer);
+				//	  }
 					  strncpy(OutStateData.lcdbuffer[LCDTITLE][1],OutStateData.lcdfullbuffer[LCDTITLE],wid);
 				  }
 				  if ( strlen(OutStateData.lcdfullbuffer[LCDTITLE]) != lasttitlelen ) {
 					  lasttitlelen=strlen(OutStateData.lcdfullbuffer[LCDTITLE]);
-					  scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false;	    
-				  }		  
-				  break;  	
-			  default:  
-				  break; 
+					  scrollpos=0; scrollwaitcnt=LcdSetup.Scrollwait; ThreadStateData.newscroll=false;
+				  }
+				  break;
+			  default:
+				  break;
 			  }
 
-			  if ( ( strlen(OutStateData.lcdfullbuffer[ScrollState]) > (((ToggleMode)?1:2)*wid+3) ) 
+			  if ( ( strlen(OutStateData.lcdfullbuffer[ScrollState]) > (((ToggleMode)?1:2)*wid+3) )
 					  && ( (scrollpos) || !(scrollwaitcnt=(scrollwaitcnt+1)%LcdSetup.Scrollwait) ) ) {
-				  if ( !(scrollcnt=(scrollcnt+1)%LcdSetup.Scrollspeed)  ) {      
+				  if ( !(scrollcnt=(scrollcnt+1)%LcdSetup.Scrollspeed)  ) {
 					  scrollpos=(scrollpos+1)%strlen(OutStateData.lcdfullbuffer[ScrollState]);
 					  if  ( scrollpos==1 ) scrollwaitcnt=0;
 					  for (i=0; i<wid; i++) {
 						  OutStateData.lcdbuffer[ScrollState][ScrollLine][i]=
-							  OutStateData.lcdfullbuffer[ScrollState][(scrollpos+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
-					  } 
+							  OutStateData.lcdfullbuffer[ScrollState][(scrollpos+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];
+					  }
 					  OutStateData.lcdbuffer[ScrollState][ScrollLine][wid]='\0';
 					  for (i=0; i<wid; i++) {
 						  OutStateData.lcdbuffer[ScrollState][ScrollLine+1][i]=
-							  OutStateData.lcdfullbuffer[ScrollState][(scrollpos+wid+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];      
-					  } 
+							  OutStateData.lcdfullbuffer[ScrollState][(scrollpos+wid+i)%strlen(OutStateData.lcdfullbuffer[ScrollState])];
+					  }
 					  OutStateData.lcdbuffer[ScrollState][ScrollLine+1][wid]='\0';
-					  Lcddirty[ScrollState][ScrollLine]=Lcddirty[ScrollState][ScrollLine+1]=true; 
+					  Lcddirty[ScrollState][ScrollLine]=Lcddirty[ScrollState][ScrollLine+1]=true;
 				  }
-			  } else if (!LcdSetup.ShowTime) Lcddirty[LCDTITLE][1]=true;
+			  } else if ( (!LcdSetup.ShowTime) || (ToggleMode) ) Lcddirty[LCDTITLE][1]=true;
 		  }
 
-		  // volume  
+		  // volume
 
 		  if (OutStateData.showvolume) gettimeofday(&voltime,NULL);
 		  if ( voltime.tv_sec != 0) { // volume
@@ -968,12 +993,12 @@ void cLcd::Action(void) { // LCD output thread
 				  voltime.tv_sec=0;
 				  OutStateData.barx=1; OutStateData.bary=1; OutStateData.barl=0; volume=false;
 			  } else {
-				  volume=true;      
+				  volume=true;
 				  OutStateData.barx=1; OutStateData.bary=((hgt==2)?2:3);
 				  // shortening volume bar in togglemode (lcd with 2x20)
 				  OutStateData.barl=(cellwid*((hgt==2 && !ToggleMode)?2:1)*wid*OutStateData.volume)/255;
-			  }	      
-		  }	    
+			  }
+		  }
 		  if (volume) OutStateData.State = Vol;
 
 		  // modes
@@ -987,34 +1012,34 @@ void cLcd::Action(void) { // LCD output thread
 			  for (i=0;i<4;i++) if (Lcddirty[LCDMENU][i]) {
 				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDMENU][i]);
 				  Lcddirty[LCDMENU][i]=false;
-			  }        
-			  PrevState=Menu; 
+			  }
+			  PrevState=Menu;
 			  break;
 
 		  case Title: // Display 'titlescsreen' = 1
 			  LineMode=0;
-			  if ( (LcdSetup.ShowTime) && ( (now.tv_usec < WakeUpCycle) || (PrevState != Title) ) ) { 
-				  cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
-				  cLcd::Write(1,workstring);
+			  if ( (LcdSetup.ShowTime) && ( (now.tv_usec < WakeUpCycle) || (PrevState != Title) || ( (ToggleMode) && (Lcddirty[LCDTITLE][1]) ) ) ) {
+			      cLcd::GetTimeDateStat(workstring2,OutStateData.CardStat);
+			      cLcd::Write(1,workstring2);
 			  }
 			  if (PrevState != Title) for (i=LcdSetup.ShowTime?1:0;i<4;i++) Lcddirty[LCDTITLE][i]=true;
-			  for (i=LcdSetup.ShowTime?1:0;i<4;i++) if (Lcddirty[LCDTITLE][i]) { 
-				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDTITLE][i]); 
-				  Lcddirty[LCDTITLE][i]=false; 
+			  for (i=LcdSetup.ShowTime?1:0;i<4;i++) if (Lcddirty[LCDTITLE][i]) {
+				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDTITLE][i]);
+				  Lcddirty[LCDTITLE][i]=false;
 			  }
 			  PrevState = Title;
 			  break;
 
 		  case Replay: // Display date/time during replaying = 2
 			  LineMode=1;
-			  if ( !ToggleMode && ((now.tv_usec < WakeUpCycle) || (PrevState != Replay)) ) { 
+			  if ( !ToggleMode && ((now.tv_usec < WakeUpCycle) || (PrevState != Replay)) ) {
 				  cLcd::GetTimeDateStat(workstring,OutStateData.CardStat);
 				  cLcd::Write(1,workstring);
-			  } 
+			  }
 			  if (PrevState != Replay) { scrollpos=0; for (i=1;i<4;i++) Lcddirty[LCDREPLAY][i]=true; }
-			  for (i=(ToggleMode)?0:1;i<4;i++) if (Lcddirty[LCDREPLAY][i]) { 
-				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDREPLAY][i]); 
-				  Lcddirty[LCDREPLAY][i]=false; 
+			  for (i=(ToggleMode)?0:1;i<4;i++) if (Lcddirty[LCDREPLAY][i]) {
+				  cLcd::Write(i+1,OutStateData.lcdbuffer[LCDREPLAY][i]);
+				  Lcddirty[LCDREPLAY][i]=false;
 			  }
 			  PrevState = Replay;
 			  break;
@@ -1041,7 +1066,7 @@ void cLcd::Action(void) { // LCD output thread
 			  PrevState = Vol;
 			  break;
 
-		  default: // quite impossible :) 
+		  default: // quite impossible :)
 			  break;
 		  }
 
@@ -1049,7 +1074,7 @@ void cLcd::Action(void) { // LCD output thread
 		  if ( (OutStateData.barx != barx) || (OutStateData.bary != bary) || (OutStateData.barl != barl) ) {
 			  sprintf(workstring,"widget_set VDR prbar %d %d %d\n",OutStateData.barx,OutStateData.bary,OutStateData.barl);
 			  sock_send_string(sock,workstring);
-			  barx=OutStateData.barx; bary=OutStateData.bary; barl=OutStateData.barl;          
+			  barx=OutStateData.barx; bary=OutStateData.bary; barl=OutStateData.barl;
 		  }
 
 		  // prio
@@ -1096,7 +1121,7 @@ void cLcd::Action(void) { // LCD output thread
 				  sock_send_string(sock,"backlight on\n");
 			  else
 				  sock_send_string(sock,"backlight off\n");
-		  }	    
+		  }
 
 		  // keys
 
@@ -1106,7 +1131,7 @@ void cLcd::Action(void) { // LCD output thread
 				  sock_send_string(sock,"screen_set VDR -heartbeat slash\n");
 			  else
 				  sock_send_string(sock,"screen_set VDR -heartbeat heart\n");
-		  }	    
+		  }
 
 
 		  if ( !(keycnt=(keycnt+1)%4) ) lastkeypressed='\0';
@@ -1139,16 +1164,16 @@ void cLcd::Action(void) { // LCD output thread
 				  }
 				  LCDd_dead++;
 			  } else LCDd_dead=0;
-		  } 
+		  }
 
 
 		  // keys (again)
 
 		  if ( LcdMaxKeys && ( strlen(workstring) > 4 ) ) {
-			  for (i=0; i < (strlen(workstring)-4); i++ ) {	    
-				  if (workstring[i]=='k' && workstring[i+1]=='e' && workstring[i+2]=='y' 
+			  for (i=0; i < (strlen(workstring)-4); i++ ) {
+				  if (workstring[i]=='k' && workstring[i+1]=='e' && workstring[i+2]=='y'
 					  && workstring[i+3]==' ' && workstring[i+4]!=lastkeypressed ) {
-					  lastkeypressed=workstring[i+4];		
+					  lastkeypressed=workstring[i+4];
 					  for (j=0; j<LcdMaxKeys && workstring[i+4]!=LcdUsedKeys[j]; j++ ) {}
 					  if (workstring[i+4] == LcdShiftKey) {
 						  LcdShiftkeyPressed = ! LcdShiftkeyPressed;
@@ -1156,9 +1181,9 @@ void cLcd::Action(void) { // LCD output thread
 							  sock_send_string(sock,"screen_set VDR -heartbeat on\n");
 						  else
 							  sock_send_string(sock,"screen_set VDR -heartbeat off\n");
-					  }		  
+					  }
 					  if ( (workstring[i+4] != LcdShiftKey) ) {
-						  if (LcdShiftkeyPressed) {		  
+						  if (LcdShiftkeyPressed) {
 							  //syslog(LOG_INFO, "shiftkey  pressed: %c %d",  workstring[i+4],j);
 							  cRemote::Put(LcdShiftMap[j]);
 							  LcdShiftkeyPressed=false;
@@ -1166,9 +1191,9 @@ void cLcd::Action(void) { // LCD output thread
 						  } else {
 							  //syslog(LOG_INFO, "normalkey pressed: %c %d",  workstring[i+4],j);
 							  cRemote::Put(LcdNormalMap[j]);
-						  }	    
-					  }		  
-				  }       	
+						  }
+					  }
+				  }
 			  }
 		  }
 
@@ -1213,11 +1238,11 @@ void cLcd::Action(void) { // LCD output thread
 						  break;
 					  case 9: // MP3
 						  if ( (OutStateData.State == Replay) && OutStateData.lcdfullbuffer[LCDREPLAY][0]=='[' &&
-								  OutStateData.lcdfullbuffer[LCDREPLAY][3]==']' && 
+								  OutStateData.lcdfullbuffer[LCDREPLAY][3]==']' &&
 								  (OutStateData.lcdfullbuffer[LCDREPLAY][1]=='.' || OutStateData.lcdfullbuffer[LCDREPLAY][1]=='L' ) &&
 								  (OutStateData.lcdfullbuffer[LCDREPLAY][2]=='.' || OutStateData.lcdfullbuffer[LCDREPLAY][2]=='S' )
 						  )
-							  OutValue += 1 << o;     
+							  OutValue += 1 << o;
 						  break;
 					  case 10: // Mplayer + MP3
 						  // Until I find a better solution any replay that is not a DVD is flagged as Mplayer-Mp3
@@ -1238,7 +1263,8 @@ void cLcd::Action(void) { // LCD output thread
 				  sock_send_string(sock,lcdCommand);
 			  }
 		  }
-		  usleep(WakeUpCycle-(now.tv_usec%WakeUpCycle)); // sync to systemtime for nicer time output 
+		  usleep(WakeUpCycle-(now.tv_usec%WakeUpCycle)); // sync to systemtime for nicer time output
+		  if (!Running()) return;
 	  }
   }
 }

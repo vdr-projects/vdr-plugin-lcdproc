@@ -15,11 +15,11 @@
 #include "lcd.h"
 #include "lcdtranstbl.h"
 
-static const char *VERSION        = "0.0.10-jw6";
+static const char *VERSION        = "0.0.10-jw7";
 static const char *MAINMENUENTRY  = NULL;
 static const char *DESCRIPTION    = trNOOP("LCDproc output");
 
-cLcd *LCDproc = new cLcd;
+cLcd *LCDproc;
 bool replaymode=false;
 bool menumode=false;
 bool switched=false;
@@ -65,12 +65,12 @@ void cLcdFeed::ChannelSwitch(const cDevice *Device, int ChannelNumber)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::ChannelSwitch  %d %d", Device->CardIndex(), ChannelNumber);
   if ( Device && Device->IsPrimaryDevice() ) {
-    if (ChannelNumber) { 
-      LCDproc->SetLine(1,2," "); 
+    if (ChannelNumber) {
+      LCDproc->SetLine(1,2," ");
       LCDproc->SetLine(1,3," ");
-      LCDproc->SetRunning(false,tr("Waiting for EPG info."), NULL); 
+      LCDproc->SetRunning(false,tr("Waiting for EPG info."), NULL);
       LCDproc->ChannelSwitched();
-      switched = true; 
+      switched = true;
     } else switched = false;
     LCDproc->SetPrimaryDevice( (cDevice *) Device );
   }
@@ -82,7 +82,7 @@ void cLcdFeed::Recording(const cDevice *Device, const char *Name, const char *Fi
   if (On)
     LCDproc->SetCardStat(Device->CardIndex(),2);
   else
-    LCDproc->SetCardStat(Device->CardIndex(),1);	  
+    LCDproc->SetCardStat(Device->CardIndex(),1);
 }
 
 void cLcdFeed::Replaying(const cControl *DvbPlayerControl, const char *Name, const char *FileName, bool On)
@@ -94,12 +94,12 @@ void cLcdFeed::Replaying(const cControl *DvbPlayerControl, const char *Name, con
     LCDproc->SetMain(2, Name);
     LCDproc->SetThreadState( (cLcd::ThreadStates) 2); // Replaying
   } else {
-    LCDproc->SetReplayDevice(NULL); 
+    LCDproc->SetReplayDevice(NULL);
     LCDproc->SetProgress(NULL);
-    LCDproc->SetLineC(1,LcdSetup.ShowTime?1:0,tempstringbuffer); 
+    LCDproc->SetLineC(1,LcdSetup.ShowTime?1:0,tempstringbuffer);
     LCDproc->SetThreadState( (cLcd::ThreadStates) 1); // Title
   }
-  menumode=false; 
+  menumode=false;
 }
 
 void cLcdFeed::SetVolume(int Volume, bool Absolute)
@@ -111,13 +111,13 @@ void cLcdFeed::SetVolume(int Volume, bool Absolute)
 void cLcdFeed::OsdClear(void)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdClear");
-	  
+
   if (replaymode)
     LCDproc->SetThreadState( (cLcd::ThreadStates) 2); // Replaying
-  else 
+  else
     LCDproc->SetThreadState( (cLcd::ThreadStates) 1); // Title
   menumode=false;
-  if (group) {LCDproc->SetLineC(1,LcdSetup.ShowTime?1:0,tempstringbuffer); group=false; } 
+  if (group) {LCDproc->SetLineC(1,LcdSetup.ShowTime?1:0,tempstringbuffer); group=false; }
 }
 
 void cLcdFeed::OsdTitle(const char *Title)
@@ -135,9 +135,9 @@ void cLcdFeed::OsdStatusMessage(const char *Message)
 {
 	//syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdStatusMessage '%s'", Message);
 	if ( Message ) {
-		if ( menumode ) 
+		if ( menumode )
 			LCDproc->SetStatus(Message);
-		else 
+		else
 			LCDproc->SetWarning(Message);
 	}
 	else {
@@ -160,13 +160,13 @@ void cLcdFeed::OsdCurrentItem(const char *Text)
 void cLcdFeed::OsdTextItem(const char *Text, bool Scroll)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdTextItem %s %d", Text, Scroll);
-  if (Text) 
+  if (Text)
     LCDproc->SummaryInit( (char *) Text);
-  else if (Scroll) 
+  else if (Scroll)
       LCDproc->SummaryUp();
     else
       LCDproc->SummaryDown();
-  LCDproc->SetThreadState( (cLcd::ThreadStates) 3); // MISC    
+  LCDproc->SetThreadState( (cLcd::ThreadStates) 3); // MISC
   LCDproc->SummaryDisplay();
 }
 
@@ -176,17 +176,17 @@ void cLcdFeed::OsdChannel(const char *Text)
   LCDproc->SetLineC(1,LcdSetup.ShowTime?1:0,Text);
 
   bool switching = group = !isdigit(Text[0]);
-  if (!group) strcpy(tempstringbuffer,Text); 
+  if (!group) strcpy(tempstringbuffer,Text);
   for (unsigned int i=0; ( i<strlen(Text)-1 ) && !switching  ; i++) {
-     switching= isdigit(Text[i]) && Text[i+1]=='-'  ;  
+     switching= isdigit(Text[i]) && Text[i+1]=='-'  ;
   }
-  
-  if (switched || switching) 
+
+  if (switched || switching)
     LCDproc->SetThreadState( (cLcd::ThreadStates) 1); // TITLE
-  else 
+  else
     LCDproc->SetThreadState( (cLcd::ThreadStates) 3); // MISC
- 
-  switched=false; menumode=false; 
+
+  switched=false; menumode=false;
 }
 
 void cLcdFeed::OsdProgramme(time_t PresentTime, const char *PresentTitle, const char *PresentSubtitle, time_t FollowingTime, const char *FollowingTitle, const char *FollowingSubtitle)
@@ -197,22 +197,22 @@ void cLcdFeed::OsdProgramme(time_t PresentTime, const char *PresentTitle, const 
   strftime(buffer, sizeof(buffer), "%R", localtime_r(&PresentTime, &tm_r));
   //syslog(LOG_INFO, "%5s %s", buffer, PresentTitle);
   //syslog(LOG_INFO, "%5s %s", "", PresentSubtitle);
-  
 
-  if ( (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
+
+  if ( (LcdSetup.ShowSubtitle) && (!isempty(PresentTitle)) && (!isempty(PresentSubtitle)) )
     LCDproc->SetRunning(false,buffer,PresentTitle,PresentSubtitle);
   else if (!isempty(PresentTitle)) LCDproc->SetRunning(false,buffer,PresentTitle);
-  else LCDproc->SetRunning(false,tr("No EPG info available."), NULL); 
+  else LCDproc->SetRunning(false,tr("No EPG info available."), NULL);
 
 
   strftime(buffer, sizeof(buffer), "%R", localtime_r(&FollowingTime, &tm_r));
   //syslog(LOG_INFO, "%5s %s", buffer, FollowingTitle);
   //syslog(LOG_INFO, "%5s %s", "", FollowingSubtitle);
-  
-  if ( (!isempty(FollowingTitle)) && (!isempty(FollowingSubtitle)) )
+
+  if ( (LcdSetup.ShowSubtitle) && (!isempty(FollowingTitle)) && (!isempty(FollowingSubtitle)) )
     LCDproc->SetRunning(true,buffer,FollowingTitle,FollowingSubtitle);
   else if (!isempty(FollowingTitle)) LCDproc->SetRunning(true,buffer,FollowingTitle);
-  else LCDproc->SetRunning(true,tr("No EPG info available."), NULL); 
+  else LCDproc->SetRunning(true,tr("No EPG info available."), NULL);
 }
 
 // ---
@@ -229,6 +229,7 @@ public:
   virtual const char *CommandLineHelp(void);
   virtual bool ProcessArgs(int argc, char *argv[]);
   virtual bool Start(void);
+  virtual void Stop(void);
   virtual void Housekeeping(void);
   virtual const char *MainMenuEntry(void) { return MAINMENUENTRY; }
   virtual cOsdMenu *MainMenuAction(void);
@@ -244,14 +245,13 @@ cPluginLcd::cPluginLcd(void)
   // DON'T DO ANYTHING ELSE THAT MAY HAVE SIDE EFFECTS, REQUIRE GLOBAL
   // VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
   lcdFeed = NULL;
-  
+  LCDproc = NULL;
 }
 
 cPluginLcd::~cPluginLcd()
 {
   // Clean up after yourself!
   delete lcdFeed;
-  delete LCDproc;
 }
 
 const char *cPluginLcd::CommandLineHelp(void)
@@ -288,12 +288,18 @@ bool cPluginLcd::Start(void)
 {
   // Start any background activities the plugin shall perform.
   lcdFeed = new cLcdFeed;
+  LCDproc = new cLcd;
   if ( LCDproc->Connect(LCDprocHOST,LCDprocPORT) ) {
     syslog(LOG_INFO, "LCDproc-Plugin started at %s:%d.",LCDprocHOST,LCDprocPORT);
     return true;
   }
   syslog(LOG_INFO, "connection to LCDd at %s:%d failed.",LCDprocHOST,LCDprocPORT);
-  return false; 
+  return false;
+}
+
+void cPluginLcd::Stop(void)
+{
+  delete LCDproc;
 }
 
 void cPluginLcd::Housekeeping(void)
@@ -334,7 +340,7 @@ void cMenuEditStraTrItem::Set(void)
 
 class cMenuSetupLcd : public cMenuSetupPage {
   private:
-    cLcdSetup newLcdSetup;    
+    cLcdSetup newLcdSetup;
     const char * RecordingStatusText[2];
     const char * PrioBackFunctionText[3];
   protected:
@@ -351,7 +357,7 @@ cMenuSetupLcd::cMenuSetupLcd(void)
   RecordingStatusText[0] = tr("detailed");
   RecordingStatusText[1] = tr("simple");
   char str2[30];
-  newLcdSetup=LcdSetup;	 
+  newLcdSetup=LcdSetup;
   Add(new cMenuEditIntItem( tr("FullCycle"),           &newLcdSetup.FullCycle,1,999));
   Add(new cMenuEditIntItem( tr("TimeDateCycle"),       &newLcdSetup.TimeCycle,0,LcdSetup.FullCycle));
   Add(new cMenuEditIntItem( tr("VolumeKeep"),          &newLcdSetup.VolumeKeep,0,999));
@@ -372,6 +378,7 @@ cMenuSetupLcd::cMenuSetupLcd(void)
   }
   Add(new cMenuEditStraItem( tr("Recording status"),   &newLcdSetup.RecordingStatus, 2, RecordingStatusText));
   Add(new cMenuEditBoolItem( tr("Show time"),          &newLcdSetup.ShowTime));
+  Add(new cMenuEditBoolItem( tr("Show subtitle"),      &newLcdSetup.ShowSubtitle));
 }
 
 void cMenuSetupLcd::Store(void)
@@ -395,8 +402,9 @@ void cMenuSetupLcd::Store(void)
     sprintf(str2,"OutputNumber %d",i);
     SetupStore(str2,   LcdSetup.OutputFunction[i]   = newLcdSetup.OutputFunction[i]);
   }
-  SetupStore("RecordingStatus", LcdSetup.RecordingStatus = newLcdSetup.RecordingStatus);  
-  SetupStore("ShowTime", LcdSetup.ShowTime = newLcdSetup.ShowTime);
+  SetupStore("RecordingStatus", LcdSetup.RecordingStatus = newLcdSetup.RecordingStatus);
+  SetupStore("ShowTime",        LcdSetup.ShowTime        = newLcdSetup.ShowTime);
+  SetupStore("ShowSubtitle",    LcdSetup.ShowSubtitle    = newLcdSetup.ShowSubtitle);
 }
 
 
@@ -422,7 +430,7 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "ClientPrioH"))  LcdSetup.ClientPrioH = atoi(Value);
   else if (!strcasecmp(Name, "BackLightWait"))  LcdSetup.BackLightWait = atoi(Value);
   else if (!strcasecmp(Name, "PrioWait"))       LcdSetup.PrioWait = atoi(Value);
-  else if (!strcasecmp(Name, "OutputNumber")) LcdSetup.OutputNumber= atoi(Value);
+  else if (!strcasecmp(Name, "OutputNumber"))   LcdSetup.OutputNumber        = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 0")) LcdSetup.OutputFunction[0]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 1")) LcdSetup.OutputFunction[1]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 2")) LcdSetup.OutputFunction[2]   = atoi(Value);
@@ -433,8 +441,9 @@ bool cPluginLcd::SetupParse(const char *Name, const char *Value)
   else if (!strcasecmp(Name, "OutputNumber 7")) LcdSetup.OutputFunction[7]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 8")) LcdSetup.OutputFunction[8]   = atoi(Value);
   else if (!strcasecmp(Name, "OutputNumber 9")) LcdSetup.OutputFunction[9]   = atoi(Value);
-  else if (!strcasecmp(Name, "RecordingStatus")) LcdSetup.RecordingStatus   = atoi(Value);
-  else if (!strcasecmp(Name, "ShowTime")) LcdSetup.ShowTime = atoi(Value);
+  else if (!strcasecmp(Name, "RecordingStatus")) LcdSetup.RecordingStatus    = atoi(Value);
+  else if (!strcasecmp(Name, "ShowTime"))       LcdSetup.ShowTime            = atoi(Value);
+  else if (!strcasecmp(Name, "ShowSubtitle"))   LcdSetup.ShowSubtitle        = atoi(Value);
   else
   return false;
   return true;
