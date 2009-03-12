@@ -77,7 +77,7 @@ VDR Plugin 'lcdproc' Revision History
 
 2009-03-07: Version 0.0.10-jw7
 - fixed a segfault when shutting down
-  (patch provided by Hanno <http://www.vdr-portal.de/board/profile.php?userid=10607>)
+  (patch provided by Joe_D <http://vdrportal.de/board/profile.php?userid=20491>)
 - optimized display with 2-line LCDs
   (patch provided by SHF <http://vdrportal.de/board/profile.php?userid=9031>)    
 - added a setup option to decide whether displaying the subtitle
