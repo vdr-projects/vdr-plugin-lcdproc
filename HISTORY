@@ -84,3 +84,8 @@ VDR Plugin 'lcdproc' Revision History
   (based on a patch provided by SHF <http://vdrportal.de/board/profile.php?userid=9031>)    
 - fixed a missing update of lastUserActivity
   (patch provided by SHF <http://vdrportal.de/board/profile.php?userid=9031>)    
+
+Head:
+- updated italian translation 
+  (provided by Diego Pierotto <vdr-italian@tiscali.it>)
+  
