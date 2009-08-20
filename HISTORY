@@ -88,4 +88,7 @@ VDR Plugin 'lcdproc' Revision History
 Head:
 - updated italian translation 
   (provided by Diego Pierotto <vdr-italian@tiscali.it>)
+- fixed a bug with displaying the volume bar. If connection to LCDd is lost and 
+  volume is changed in the meantime, the volume bar got mixed up after reconnection.
+   
   

@@ -356,7 +356,6 @@ void cLcd::SetWarning( const char *string) {
 }
 
 void cLcd::ShowVolume(int vol, bool absolute ) {
-if (!connected) return;
   BeginMutualExclusion();
     if (absolute)
         ThreadStateData.volume=vol;
@@ -365,6 +364,7 @@ if (!connected) return;
     ThreadStateData.muted=(ThreadStateData.volume==0);
     ThreadStateData.showvolume=true;
   EndMutualExclusion();
+  if (!connected) return;
   if (ThreadStateData.muted) {
     cLcd::SetLine(Vol,0," ");
     cLcd::SetLine(Vol,1,Convert(tr("Mute")));
