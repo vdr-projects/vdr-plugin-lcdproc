@@ -52,11 +52,11 @@ cLcd::cLcd() {
   for (i=0;i<LCDMAXCARDS;i++) ThreadStateData.CardStat[i]=0;
   channelSwitched = false;
   SummaryText = NULL;
-//#if VDRVERSNUM < 10701
+#if VDRVERSNUM < 10711
   conv = new cCharSetConv(cCharSetConv::SystemCharacterTable() ? cCharSetConv::SystemCharacterTable() : "UTF-8", "ISO-8859-1");
-//#else
-//  conv = new cCharSetConv(NULL, "ISO-8859-1");
-//#endif
+#else
+  conv = new cCharSetConv(NULL, "ISO-8859-1");
+#endif
 }
 
 cLcd::~cLcd() {
