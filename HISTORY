@@ -90,5 +90,8 @@ Head:
   (provided by Diego Pierotto <vdr-italian@tiscali.it>)
 - fixed a bug with displaying the volume bar. If connection to LCDd is lost and 
   volume is changed in the meantime, the volume bar got mixed up after reconnection.
+- adapted to changes in VDR 1.7.11 regarding character set conversion.
+- implemented cStatus::SetAudioChannel and SetAudioTrack to display audio track 
+  information on lcd.
    
   

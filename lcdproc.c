@@ -45,11 +45,19 @@ static const char * OutputFunctionText[]= {"Off",
                                            "User3"};
 
 class cLcdFeed : public cStatus {
+public:
+	cLcdFeed() {
+		AudioTrack = NULL;
+	}
+private:
+	char * AudioTrack;
 protected:
   virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
   virtual void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
   virtual void Replaying(const cControl *DvbPlayerControl, const char *Name, const char *FileName, bool On);
   virtual void SetVolume(int Volume, bool Absolute);
+  virtual void SetAudioTrack(int Index, const char * const *Tracks);
+  virtual void SetAudioChannel(int AudioChannel);
   virtual void OsdClear(void);
   virtual void OsdTitle(const char *Title);
   virtual void OsdStatusMessage(const char *Message);
@@ -108,6 +116,33 @@ void cLcdFeed::SetVolume(int Volume, bool Absolute)
   LCDproc->ShowVolume( Volume, Absolute );
 }
 
+void cLcdFeed::SetAudioTrack(int Index, const char * const *Tracks)
+{
+	OsdTitle(trVDR("Button$Audio"));
+	if (AudioTrack)
+		free(AudioTrack);
+	asprintf(&AudioTrack, "%s", Tracks[Index]);
+	OsdCurrentItem(AudioTrack);
+}
+
+void cLcdFeed::SetAudioChannel(int AudioChannel){
+	char * TrackDescription;
+	switch (AudioChannel){
+	case 0:
+		asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Stereo"));
+		break;
+	case 1:
+		asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Left channel"));
+		break;
+	case 2:
+		asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Right channel"));
+		break;
+	default:
+		return;
+	}
+	OsdCurrentItem(TrackDescription);
+	free(TrackDescription);
+}
 void cLcdFeed::OsdClear(void)
 {
   //syslog(LOG_INFO, "lcdproc: cLcdFeed::OsdClear");
