@@ -18,7 +18,14 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 ### The C++ compiler and options:
 
 CXX      ?= g++
-CXXFLAGS ?= -fPIC -g -O2 -Wall -Woverloaded-virtual
+CXXFLAGS ?= -g -O2 -Wall -Woverloaded-virtual
+
+### Make sure that necessary options are included:
+ifeq ($(strip $(wildcard $(VDRDIR)/Make.global)),)
+  CXXFLAGS += -fPIC
+else
+  include $(VDRDIR)/Make.global
+endif
 
 ### The directory environment:
 

@@ -93,5 +93,7 @@ Head:
 - adapted to changes in VDR 1.7.11 regarding character set conversion.
 - implemented cStatus::SetAudioChannel and SetAudioTrack to display audio track 
   information on lcd.
+- adapted Makefile for VDR >= 1.7.13
+
    
   
