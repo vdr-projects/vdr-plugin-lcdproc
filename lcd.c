@@ -495,8 +495,8 @@ void cLcd::SetRunning( bool nownext, const char *string1, const char *string2, c
       ThreadStateData.lcdfullbuffer[LCDTITLE][i++]=' ';
       }
       ThreadStateData.lcdfullbuffer[LCDTITLE][i]='\0';
-      sprintf(now1,"%s",ThreadStateData.lcdbuffer[LCDTITLE][2]);
-      sprintf(now2,"%s",ThreadStateData.lcdbuffer[LCDTITLE][3]);
+      snprintf(now1,LCDMAXWID,"%s",ThreadStateData.lcdbuffer[LCDTITLE][2]);
+      snprintf(now2,LCDMAXWID,"%s",ThreadStateData.lcdbuffer[LCDTITLE][3]);
     EndMutualExclusion();
 
   }

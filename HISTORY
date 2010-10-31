@@ -94,6 +94,8 @@ Head:
 - implemented cStatus::SetAudioChannel and SetAudioTrack to display audio track 
   information on lcd.
 - adapted Makefile for VDR >= 1.7.13
+- fixed a possible buffer overflow in cLcd::SetRunning which caused an ABRT signal with
+  recent libc
 
    
   
