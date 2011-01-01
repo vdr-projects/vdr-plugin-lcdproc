@@ -121,7 +121,10 @@ void cLcdFeed::SetAudioTrack(int Index, const char * const *Tracks)
 	OsdTitle(trVDR("Button$Audio"));
 	if (AudioTrack)
 		free(AudioTrack);
-	asprintf(&AudioTrack, "%s", Tracks[Index]);
+	if (asprintf(&AudioTrack, "%s", Tracks[Index]) < 0) {
+		syslog(LOG_ERR, "lcdproc: error allocating memory in asprintf");
+		return;
+	}
 	OsdCurrentItem(AudioTrack);
 }
 
@@ -129,13 +132,22 @@ void cLcdFeed::SetAudioChannel(int AudioChannel){
 	char * TrackDescription;
 	switch (AudioChannel){
 	case 0:
-		asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Stereo"));
+		if (asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Stereo")) < 0) {
+			syslog(LOG_ERR, "lcdproc: error allocating memory in asprintf");
+			return;
+		}
 		break;
 	case 1:
-		asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Left channel"));
+		if (asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Left channel")) < 0) {
+			syslog(LOG_ERR, "lcdproc: error allocating memory in asprintf");
+			return;
+		}
 		break;
 	case 2:
-		asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Right channel"));
+		if (asprintf(&TrackDescription, "%s (%s)", AudioTrack, tr("Right channel")) < 0) {
+			syslog(LOG_ERR, "lcdproc: error allocating memory in asprintf");
+			return;
+		}
 		break;
 	default:
 		return;

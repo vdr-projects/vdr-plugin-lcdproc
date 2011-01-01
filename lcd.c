@@ -67,7 +67,10 @@ cLcd::~cLcd() {
 }
 
 bool cLcd::Connect( const char *host, unsigned int port ) {
-  asprintf(&(this->host), "%s", host);
+  if (asprintf(&(this->host), "%s", host) < 0) {
+	  syslog(LOG_ERR, "lcdproc: error allocating memory in asprintf");
+	  return false;
+  }
   this->port = port;
   cLcd::Open();
 
@@ -912,7 +915,7 @@ void cLcd::Action(void) { // LCD output thread
 		  if ( (now.tv_usec < WakeUpCycle) && (replayDvbApi) ) {
 			  char tempbuffer[16];
 			  replayDvbApi->GetIndex(Current, Total, false); Total=(Total==0)?1:Total;
-			  sprintf(tempbuffer,IndexToHMSF(Total));
+			  sprintf(tempbuffer,"%s",(const char*)IndexToHMSF(Total));
 			  SetProgress(IndexToHMSF(Current),tempbuffer, (100 * Current) / Total);
 		  }
 
