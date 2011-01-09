@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <vdr@joachim-wilke.de>\n"
-"POT-Creation-Date: 2010-01-17 13:08+0100\n"
+"POT-Creation-Date: 2011-01-01 16:52+0100\n"
 "PO-Revision-Date: 2007-08-12 20:41+0200\n"
 "Last-Translator: Joachim Wilke <vdr@joachim-wilke.de>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
@@ -15,19 +15,19 @@ msgstr ""
 "Content-Type: text/plain; charset=ISO-8859-15\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: lcd.c:370
+#: lcd.c:373
 msgid "Mute"
 msgstr "Stumm"
 
-#: lcd.c:376 lcd.c:379 lcd.c:385
+#: lcd.c:379 lcd.c:382 lcd.c:388
 msgid "Volume "
 msgstr "Lautstärke "
 
-#: lcd.c:729 lcd.c:732
+#: lcd.c:732 lcd.c:735
 msgid "RECORDING"
 msgstr "AUFNAHME "
 
-#: lcd.c:859 lcdproc.c:240 lcdproc.c:250
+#: lcd.c:862 lcdproc.c:252 lcdproc.c:262
 msgid "No EPG info available."
 msgstr "Keine EPG Information verfügbar."
 
@@ -39,102 +39,102 @@ msgstr "LCDproc Ausgabe"
 msgid "Waiting for EPG info."
 msgstr "Suche nach EPG Information."
 
-#: lcdproc.c:132
+#: lcdproc.c:135
 msgid "Stereo"
 msgstr "Stereo"
 
-#: lcdproc.c:135
+#: lcdproc.c:141
 msgid "Left channel"
 msgstr "Linker Kanal"
 
-#: lcdproc.c:138
+#: lcdproc.c:147
 msgid "Right channel"
 msgstr "Rechter Kanal"
 
-#: lcdproc.c:389
+#: lcdproc.c:401
 msgid "off"
 msgstr "aus"
 
-#: lcdproc.c:390
+#: lcdproc.c:402
 msgid "on"
 msgstr "an"
 
-#: lcdproc.c:391
+#: lcdproc.c:403
 msgid "auto"
 msgstr "auto"
 
-#: lcdproc.c:392
+#: lcdproc.c:404
 msgid "detailed"
 msgstr "detailiert"
 
-#: lcdproc.c:393
+#: lcdproc.c:405
 msgid "simple"
 msgstr "einfach"
 
-#: lcdproc.c:396
+#: lcdproc.c:408
 msgid "FullCycle"
 msgstr "Zyklusdauer Statuszeile"
 
-#: lcdproc.c:397
+#: lcdproc.c:409
 msgid "TimeDateCycle"
 msgstr "davon Dauer Zeitanzeige"
 
-#: lcdproc.c:398
+#: lcdproc.c:410
 msgid "VolumeKeep"
 msgstr "Anzeigedauer Lautstärke"
 
-#: lcdproc.c:399
+#: lcdproc.c:411
 msgid "Scrollwait"
 msgstr "Zeit bis Text rollen"
 
-#: lcdproc.c:400
+#: lcdproc.c:412
 msgid "Scrollspeed"
 msgstr "Rollgeschwindigkeit"
 
-#: lcdproc.c:401
+#: lcdproc.c:413
 msgid "Charmap"
 msgstr "Zeichenkodierung"
 
-#: lcdproc.c:402
+#: lcdproc.c:414
 msgid "AltShift"
 msgstr "Alternative \"Heartbeat\"-Signalisierung"
 
-#: lcdproc.c:403
+#: lcdproc.c:415
 msgid "BackLight"
 msgstr "Hintergrundbeleuchtung"
 
-#: lcdproc.c:404
+#: lcdproc.c:416
 msgid "SetClientPriority"
 msgstr ""
 
-#: lcdproc.c:405
+#: lcdproc.c:417
 msgid "NormalClientPriority"
 msgstr ""
 
-#: lcdproc.c:406
+#: lcdproc.c:418
 msgid "HighClientPriority"
 msgstr ""
 
-#: lcdproc.c:407
+#: lcdproc.c:419
 msgid "BackLightWait"
 msgstr ""
 
-#: lcdproc.c:408
+#: lcdproc.c:420
 msgid "PrioWait"
 msgstr ""
 
-#: lcdproc.c:409 lcdproc.c:411
+#: lcdproc.c:421 lcdproc.c:423
 msgid "OutputNumber"
 msgstr "Zahl der Ausgänge am LCD"
 
-#: lcdproc.c:414
+#: lcdproc.c:426
 msgid "Recording status"
 msgstr "Aufnahemstatus"
 
-#: lcdproc.c:415
+#: lcdproc.c:427
 msgid "Show time"
 msgstr "Zeit anzeigen"
 
-#: lcdproc.c:416
+#: lcdproc.c:428
 msgid "Show subtitle"
 msgstr "Untertitel anzeigen"
