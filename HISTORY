@@ -85,7 +85,7 @@ VDR Plugin 'lcdproc' Revision History
 - fixed a missing update of lastUserActivity
   (patch provided by SHF <http://vdrportal.de/board/profile.php?userid=9031>)    
 
-2011-01-09:
+2011-01-09: Version 0.0.10-jw8
 - updated italian translation 
   (provided by Diego Pierotto <vdr-italian@tiscali.it>)
 - fixed a bug with displaying the volume bar. If connection to LCDd is lost and 
@@ -97,5 +97,6 @@ VDR Plugin 'lcdproc' Revision History
 - fixed a possible buffer overflow in cLcd::SetRunning which caused an ABRT signal with
   recent libc
 
-   
-  
+HEAD:
+- added russian translation
+  (provided by Jakob Kais <schpuntik@freenet.de>)
