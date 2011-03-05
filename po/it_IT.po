@@ -10,7 +10,7 @@ msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <vdr@joachim-wilke.de>\n"
 "POT-Creation-Date: 2011-01-01 16:52+0100\n"
-"PO-Revision-Date: 2009-03-17 22:11+0100\n"
+"PO-Revision-Date: 2011-03-05 16:24+0100\n"
 "Last-Translator: Diego Pierotto <vdr-italian@tiscali.it>\n"
 "Language-Team:  <vdr@linuxtv.org>\n"
 "MIME-Version: 1.0\n"
@@ -24,15 +24,20 @@ msgstr ""
 msgid "Mute"
 msgstr "Muto"
 
-#: lcd.c:379 lcd.c:382 lcd.c:388
+#: lcd.c:379
+#: lcd.c:382
+#: lcd.c:388
 msgid "Volume "
 msgstr "Volume"
 
-#: lcd.c:732 lcd.c:735
+#: lcd.c:732
+#: lcd.c:735
 msgid "RECORDING"
 msgstr "REGISTRAZIONE"
 
-#: lcd.c:862 lcdproc.c:252 lcdproc.c:262
+#: lcd.c:862
+#: lcdproc.c:252
+#: lcdproc.c:262
 msgid "No EPG info available."
 msgstr "Nessun info EPG disponibile"
 
@@ -46,15 +51,15 @@ msgstr "Attesa info EPG"
 
 #: lcdproc.c:135
 msgid "Stereo"
-msgstr ""
+msgstr "Stereo"
 
 #: lcdproc.c:141
 msgid "Left channel"
-msgstr ""
+msgstr "Canale sinistro"
 
 #: lcdproc.c:147
 msgid "Right channel"
-msgstr ""
+msgstr "Canale destro"
 
 #: lcdproc.c:401
 msgid "off"
@@ -128,7 +133,8 @@ msgstr "Attesa luminosità sfondo"
 msgid "PrioWait"
 msgstr "Priorità attesa"
 
-#: lcdproc.c:421 lcdproc.c:423
+#: lcdproc.c:421
+#: lcdproc.c:423
 msgid "OutputNumber"
 msgstr "Numero uscita"
 
@@ -146,3 +152,4 @@ msgstr "Mostra sottotitoli"
 
 #~ msgid "Schedule - %s"
 #~ msgstr "Programmi - %s"
+
