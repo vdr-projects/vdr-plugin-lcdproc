@@ -52,7 +52,11 @@ public:
 private:
 	char * AudioTrack;
 protected:
+#if VDRVERSNUM < 10726
   virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber);
+#else
+  virtual void ChannelSwitch(const cDevice *Device, int ChannelNumber, bool LiveView);
+#endif
   virtual void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
   virtual void Replaying(const cControl *DvbPlayerControl, const char *Name, const char *FileName, bool On);
   virtual void SetVolume(int Volume, bool Absolute);
@@ -68,11 +72,15 @@ protected:
   virtual void OsdProgramme(time_t PresentTime, const char *PresentTitle, const char *PresentSubtitle, time_t FollowingTime, const char *FollowingTitle, const char *FollowingSubtitle);
   };
 
-
+#if VDRVERSNUM < 10726
 void cLcdFeed::ChannelSwitch(const cDevice *Device, int ChannelNumber)
 {
-  //syslog(LOG_INFO, "lcdproc: cLcdFeed::ChannelSwitch  %d %d", Device->CardIndex(), ChannelNumber);
-  if ( Device && Device->IsPrimaryDevice() ) {
+  if (Device && Device->IsPrimaryDevice()) {
+#else
+void cLcdFeed::ChannelSwitch(const cDevice *Device, int ChannelNumber, bool LiveView)
+{
+  if  (LiveView) {
+#endif
     if (ChannelNumber) {
       LCDproc->SetLine(1,2," ");
       LCDproc->SetLine(1,3," ");
