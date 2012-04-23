@@ -134,7 +134,7 @@ sock_recv_string (int fd, char *dest, size_t maxlen)
 
 	if (!dest)
 		return -1;
-	if (maxlen <= 0)
+	if (maxlen == 0)
 		return 0;
 
 	while (1) {
@@ -215,7 +215,7 @@ sock_recv (int fd, void *dest, size_t maxlen)
 
 	if (!dest)
 		return -1;
-	if (maxlen <= 0)
+	if (maxlen == 0)
 		return 0;
 
 	err = read (fd, dest, maxlen);

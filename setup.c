@@ -17,6 +17,7 @@ cLcdSetup::cLcdSetup(void)
   SetPrio     =   2;
   BackLightWait = 20;
   PrioWait    =   60;
+  ClientPrioWait = 60;
   OutputNumber   =  0;
   for (int i = 0; i < LCDMAXOUTPUTS; i++)
     OutputFunction[i] = 0;

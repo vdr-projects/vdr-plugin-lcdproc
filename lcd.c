@@ -33,8 +33,11 @@ cLcd::cLcd() {
   int i, j;
   connected = false;
   suspended = false;
-  ThreadStateData.showvolume = false;
-  ThreadStateData.newscroll = false;
+  memset(&ThreadStateData,0,sizeof(ThreadStateData));
+  memset(&LastState,0,sizeof(LastState));
+  memset(&StringBuffer,0,sizeof(StringBuffer));
+  LastStateP=LineMode=0;
+  ToggleMode=false;
   sock = wid = hgt = cellwid = cellhgt = 0;
   closing = false;
   host = NULL;
@@ -47,11 +50,14 @@ cLcd::cLcd() {
     ThreadStateData.lcddirty[i][j]=true;
   }
   ThreadStateData.State=Menu;
-  for (i=0;i<LCDMAXSTATEBUF;i++) LastState[i]=Title; LastStateP=0;
-  ThreadStateData.barx=1, ThreadStateData.bary=1, ThreadStateData.barl=0;
-  for (i=0;i<LCDMAXCARDS;i++) ThreadStateData.CardStat[i]=0;
+  for (i=0;i<LCDMAXSTATEBUF;i++) LastState[i]=Title; 
+  ThreadStateData.barx=1;
+  ThreadStateData.bary=1;
   channelSwitched = false;
   SummaryText = NULL;
+  SummaryTextL = SummaryCurrent = port = LCDd_dead = 0;
+  LastProgress = (time_t) 0;
+
 #if VDRVERSNUM < 10711
   conv = new cCharSetConv(cCharSetConv::SystemCharacterTable() ? cCharSetConv::SystemCharacterTable() : "UTF-8", "ISO-8859-1");
 #else
@@ -102,7 +108,7 @@ bool cLcd::Open() {
 
   while ( ((int)i<((int)strlen(istring)-5)) && (strncmp("lcd",istring+i,3) != 0 ) ) i++;
 
-  if (sscanf(istring+i,"lcd wid %d hgt %d cellwid %d cellhgt %d", &wid, &hgt, &cellwid, &cellhgt)) connected=true;
+  if (sscanf(istring+i,"lcd wid %3d hgt %3d cellwid %3d cellhgt %3d", &wid, &hgt, &cellwid, &cellhgt)) connected=true;
 
   if ((hgt < 4 ) || (wid < 16)) connected = false; // 4 lines are needed, may work with more than 4 though
   if ((hgt==2) && (wid>31)) { connected = true; wid=wid/2; LineMode=0; }   // 2x32-2x40
@@ -197,7 +203,6 @@ void cLcd::SetTitle( const char *string) {
 
   const char* c_string = Convert(string);
 
-  unsigned int i;
   char title[wid+1];
 
   // we need to know the length of the translated string "Schedule"
@@ -212,7 +217,7 @@ void cLcd::SetTitle( const char *string) {
   } else {
     memset(title,' ',wid/2+1);
     snprintf(title + ( (wid-strlen(c_string))/2 ),wid-( (wid-strlen(c_string))/2 ),"%s",c_string); // center title
-    for (i=0;i<strlen(title);i++) title[i]=toupper(title[i]); // toupper
+    for (unsigned int i=0;i<strlen(title);i++) title[i]=toupper(title[i]); // toupper
   }
   cLcd::SetLine(LCDMENU,0,title);
 }
@@ -599,9 +604,8 @@ void cLcd::EndMutualExclusion() {
 
 void cLcd::Copy(char *to, const char *from, unsigned int max) { // eliminates tabs, double blanks, ...
 
-  unsigned int i=0 , out=0;
-
   if (from != NULL) {
+    unsigned int i=0 , out=0;
     while ((out < max) && (from[i] != '\0') ) {
       to[out]=(isspace(from[i]))?' ':from[i];
       if ( (out>0) && (to[out-1]==' ') && ispunct(to[out]) ) {to[out-1]=to[out]; to[out]=' '; }
@@ -620,7 +624,7 @@ void cLcd::Copy(char *to, const char *from, unsigned int max) { // eliminates ta
 
 void cLcd::Split(char *string, char *string1, char *string2) {
 
-  unsigned int  i,j,k,ofs;
+  unsigned int  i,j,ofs;
 
   if ( hgt>2 && ( strlen(string) < 2*wid) && isdigit(string[0]) && isdigit(string[1]) // beautification ..
        && string[2]==':' && isdigit(string[3]) && isdigit(string[4]) ) {
@@ -642,6 +646,7 @@ void cLcd::Split(char *string, char *string1, char *string2) {
 
       if ( ( (2*wid-j) >= (ofs=wid-(i+1)) ) && ofs+j <= 2*wid   ) {
 	string[j+ofs]='\0';
+	unsigned int k;
 	for (k=j+ofs-1;k>i+ofs; k-- ) string[k]=string[k-ofs];
         for (k=0;k<ofs;k++) string[i+k+1]=' ';
       }
@@ -746,8 +751,8 @@ void cLcd::Action(void) { // LCD output thread
   unsigned int i,j, barx, bary, barl, ScrollState, ScrollLine, lasttitlelen;
   int Current, Total, scrollpos, scrollcnt, scrollwaitcnt, lastAltShift, lastBackLight,lastPrio, keycnt;
   struct timeval now, voltime;
-  char workstring[WorkString_Length];
-  char workstring2[101];
+  char workstring[WorkString_Length]="";
+  char workstring2[101]="";
   char lastkeypressed='\0';
   cLcd::ThreadStates PrevState = Menu;
   struct cLcd::StateData OutStateData;
@@ -759,6 +764,9 @@ void cLcd::Action(void) { // LCD output thread
 
   // LCR
   static int lcrCycle;
+
+  memset(&OutStateData,0,sizeof(OutStateData));
+  memset(&Lcddirty,0,sizeof(Lcddirty));
 
   time_t nextLcdUpdate, lastUserActivity;
 
@@ -1202,10 +1210,10 @@ void cLcd::Action(void) { // LCD output thread
 
 		  // Output
 
-		  int OutValue = 0;
 		  char lcdCommand[100];
 		  if (!closing){
 			  if (LcdSetup.OutputNumber > 0){
+				  int OutValue = 0;
 				  for (int o=0; o <  LcdSetup.OutputNumber; o++){
 					  switch(LcdSetup.OutputFunction[o]){
 					  case 0: // Off
