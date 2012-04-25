@@ -97,6 +97,15 @@ VDR Plugin 'lcdproc' Revision History
 - fixed a possible buffer overflow in cLcd::SetRunning which caused an ABRT signal with
   recent libc
 
-HEAD:
+2012-04-25: Version 0.0.10-jw9
 - added russian translation
   (provided by Jakob Kais <schpuntik@freenet.de>)
+- Patch to prevent cppcheck warnings/errors and valgrind messages
+  (submitted by Joe_D, vdr-developer.org #943)
+- Adapt plugin to API changes in VDR 1.7.26
+- Update Italian translations
+  (Provided by Diego Pierotto)
+- Add eclipse project files and .gitignore
+  Works without modifications, if VDR sources are located
+  in <workspace>/vdr
+
