@@ -69,7 +69,7 @@ sock_connect (char *host, unsigned short int port)
 	err = connect (sock, (struct sockaddr *) &servername, sizeof (servername));
 	if (err < 0) {
 		perror ("sock_connect: connect failed");
-		shutdown (sock, 2);
+		sock_close (sock);
 		return 0;					  // Normal exit if server doesn't exist...
 	}
 
@@ -84,8 +84,7 @@ sock_close (int fd)
 	int err;
 
 	err = shutdown (fd, 2);
-	if (!err)
-		close (fd);
+	close (fd);
 
 	return err;
 }
