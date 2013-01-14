@@ -922,9 +922,11 @@ void cLcd::Action(void) { // LCD output thread
 
 		  if ( (now.tv_usec < WakeUpCycle) && (replayDvbApi) ) {
 			  char tempbuffer[16];
-			  replayDvbApi->GetIndex(Current, Total, false); Total=(Total==0)?1:Total;
-			  sprintf(tempbuffer,"%s",(const char*)IndexToHMSF(Total));
-			  SetProgress(IndexToHMSF(Current),tempbuffer, (100 * Current) / Total);
+			  replayDvbApi->GetIndex(Current, Total, false);
+			  Total= (Total==0) ? 1 : Total;
+			  double FramesPerSecond = replayDvbApi->FramesPerSecond();
+			  sprintf(tempbuffer, "%s", (const char*)IndexToHMSF(Total, false, FramesPerSecond));
+			  SetProgress(IndexToHMSF(Current, false, FramesPerSecond), tempbuffer, (100 * Current) / Total);
 		  }
 
 
