@@ -1,4 +1,7 @@
-#Fri Dec 31 15:19:48 CET 2010
 eclipse.preferences.version=1
-environment/project/cdt.managedbuild.config.gnu.exe.debug.257848633=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?>\n<environment append\="true" appendContributed\="true">\n<variable delimiter\="\:" name\="VDRDIR" operation\="append" value\="${workspace_loc}/vdr"/>\n</environment>\n
-environment/project/cdt.managedbuild.config.gnu.exe.release.759480820=<?xml version\="1.0" encoding\="UTF-8" standalone\="no"?>\n<environment append\="true" appendContributed\="true">\n<variable delimiter\="\:" name\="VDRDIR" operation\="append" value\="${workspace_loc}/vdr"/>\n</environment>\n
+environment/project/cdt.managedbuild.config.gnu.exe.debug.257848633=
+environment/project/cdt.managedbuild.config.gnu.exe.debug.257848633/append=true
+environment/project/cdt.managedbuild.config.gnu.exe.debug.257848633/appendContributed=true
+environment/project/cdt.managedbuild.config.gnu.exe.release.759480820=
+environment/project/cdt.managedbuild.config.gnu.exe.release.759480820/append=true
+environment/project/cdt.managedbuild.config.gnu.exe.release.759480820/appendContributed=true
