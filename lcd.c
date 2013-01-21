@@ -808,7 +808,7 @@ void cLcd::Action(void) { // LCD output thread
 	  cLcd::Write(LcdSetup.ShowTime?1:4," Welcome  to  V D R\0");
 	  cLcd::Write(LcdSetup.ShowTime?2:3,"--------------------\0");
 	  cLcd::Write(LcdSetup.ShowTime?3:1,"Video Disk Recorder\0");
-	  cLcd::Write(LcdSetup.ShowTime?4:2,"Version: "VDRVERSION"\0");
+	  cLcd::Write(LcdSetup.ShowTime?4:2,"Version: " VDRVERSION "\0");
 
 	  // Output init
 	  if (LcdSetup.OutputNumber > 0){
