@@ -8,134 +8,104 @@ msgid ""
 msgstr ""
 "Project-Id-Version: VDR 1.5.7\n"
 "Report-Msgid-Bugs-To: <vdr@joachim-wilke.de>\n"
-"POT-Creation-Date: 2011-01-01 16:52+0100\n"
+"POT-Creation-Date: 2012-04-23 21:57+0200\n"
 "PO-Revision-Date: 2007-08-12 20:41+0200\n"
 "Last-Translator: Istvan Koenigsberger <istvnko@hotmail.com>, Guido Josten <guido.josten@t-online.de>\n"
 "Language-Team: <vdr@linuxtv.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=ISO-8859-2\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: lcd.c:373
-msgid "Mute"
-msgstr ""
-
-#: lcd.c:379 lcd.c:382 lcd.c:388
-msgid "Volume "
-msgstr ""
-
-#: lcd.c:732 lcd.c:735
-msgid "RECORDING"
-msgstr ""
-
-#: lcd.c:862 lcdproc.c:252 lcdproc.c:262
-msgid "No EPG info available."
-msgstr "No EPG info available."
-
-#: lcdproc.c:20
-msgid "LCDproc output"
-msgstr ""
-
-#: lcdproc.c:79
-msgid "Waiting for EPG info."
-msgstr "Scanning for EPG info."
-
-#: lcdproc.c:135
-msgid "Stereo"
-msgstr ""
-
-#: lcdproc.c:141
-msgid "Left channel"
-msgstr ""
-
-#: lcdproc.c:147
-msgid "Right channel"
-msgstr ""
-
-#: lcdproc.c:401
-msgid "off"
-msgstr ""
-
-#: lcdproc.c:402
-msgid "on"
-msgstr ""
-
-#: lcdproc.c:403
-msgid "auto"
-msgstr ""
-
-#: lcdproc.c:404
-msgid "detailed"
-msgstr ""
-
-#: lcdproc.c:405
-msgid "simple"
-msgstr ""
-
-#: lcdproc.c:408
-msgid "FullCycle"
-msgstr "FullCycle"
-
-#: lcdproc.c:409
-msgid "TimeDateCycle"
-msgstr "TimeDateCycle"
-
-#: lcdproc.c:410
-msgid "VolumeKeep"
-msgstr "VolumeKeep"
-
-#: lcdproc.c:411
-msgid "Scrollwait"
-msgstr "Scrollwait"
-
-#: lcdproc.c:412
-msgid "Scrollspeed"
-msgstr "Scrollspeed"
-
-#: lcdproc.c:413
-msgid "Charmap"
-msgstr "Charmap"
-
-#: lcdproc.c:414
 msgid "AltShift"
 msgstr "AltShift"
 
-#: lcdproc.c:415
 msgid "BackLight"
 msgstr "BackLight"
 
-#: lcdproc.c:416
-msgid "SetClientPriority"
-msgstr ""
-
-#: lcdproc.c:417
-msgid "NormalClientPriority"
-msgstr ""
-
-#: lcdproc.c:418
-msgid "HighClientPriority"
-msgstr ""
-
-#: lcdproc.c:419
 msgid "BackLightWait"
 msgstr ""
 
-#: lcdproc.c:420
-msgid "PrioWait"
+msgid "Charmap"
+msgstr "Charmap"
+
+msgid "FullCycle"
+msgstr "FullCycle"
+
+msgid "HighClientPriority"
 msgstr ""
 
-#: lcdproc.c:421 lcdproc.c:423
+msgid "LCDproc output"
+msgstr ""
+
+msgid "Left channel"
+msgstr ""
+
+msgid "Mute"
+msgstr ""
+
+msgid "No EPG info available."
+msgstr "No EPG info available."
+
+msgid "NormalClientPriority"
+msgstr ""
+
 msgid "OutputNumber"
 msgstr "OutputNumber"
 
-#: lcdproc.c:426
+msgid "PrioWait"
+msgstr ""
+
+msgid "RECORDING"
+msgstr ""
+
 msgid "Recording status"
 msgstr ""
 
-#: lcdproc.c:427
+msgid "Right channel"
+msgstr ""
+
+msgid "Scrollspeed"
+msgstr "Scrollspeed"
+
+msgid "Scrollwait"
+msgstr "Scrollwait"
+
+msgid "SetClientPriority"
+msgstr ""
+
+msgid "Show subtitle"
+msgstr ""
+
 msgid "Show time"
 msgstr ""
 
-#: lcdproc.c:428
-msgid "Show subtitle"
+msgid "Stereo"
+msgstr ""
+
+msgid "TimeDateCycle"
+msgstr "TimeDateCycle"
+
+msgid "Volume "
+msgstr ""
+
+msgid "VolumeKeep"
+msgstr "VolumeKeep"
+
+msgid "Waiting for EPG info."
+msgstr "Scanning for EPG info."
+
+msgid "auto"
+msgstr ""
+
+msgid "detailed"
+msgstr ""
+
+msgid "off"
+msgstr ""
+
+msgid "on"
+msgstr ""
+
+msgid "simple"
 msgstr ""
