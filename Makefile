@@ -57,7 +57,7 @@ I18Npot   = $(PODIR)/$(PLUGIN).pot
 all: $(SOFILE) i18n
 
 $(SOFILE): $(OBJS)
-	$(CXX) $(CXXFLAGS) -shared $(OBJS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) -o $@
 
 install-lib: $(SOFILE)
 	install -D $^ $(LIBDIR)/$^.$(APIVERSION)
